@@ -69,20 +69,32 @@ def move_sample_files(sample):
     if not sample.collection or not sample.biobank:
         return
 
-    old_base = os.path.join(settings.MEDIA_ROOT, "_unassigned_samples", slugify(sample.sample_id))
-    if not os.path.exists(old_base):
+    old_base_rel = os.path.join("_unassigned_samples", slugify(sample.sample_id))
+    old_base_abs = os.path.join(settings.MEDIA_ROOT, old_base_rel)
+
+    if not os.path.exists(old_base_abs):
         return
 
-    new_base = os.path.join(
-        settings.MEDIA_ROOT,
+    new_base_rel = os.path.join(
         slugify(sample.biobank.name),
         slugify(sample.collection.name),
         slugify(sample.sample_id),
     )
+    new_base_abs = os.path.join(settings.MEDIA_ROOT, new_base_rel)
 
-    os.makedirs(new_base, exist_ok=True)
-    for filename in os.listdir(old_base):
-        shutil.move(os.path.join(old_base, filename), os.path.join(new_base, filename))
+    os.makedirs(new_base_abs, exist_ok=True)
+    for filename in os.listdir(old_base_abs):
+        old_file_path = os.path.join(old_base_abs, filename)
+        new_file_path = os.path.join(new_base_abs, filename)
+        shutil.move(old_file_path, new_file_path)
 
-    if not os.listdir(old_base):
-        os.rmdir(old_base)
+    if not os.listdir(old_base_abs):
+        os.rmdir(old_base_abs)
+
+    # CORREÇÃO: Atualizar o caminho dos arquivos no banco de dados
+    for sample_file in sample.files.all():
+        if str(sample_file.file.name).startswith(old_base_rel):
+            filename = os.path.basename(sample_file.file.name)
+            sample_file.file.name = os.path.join(new_base_rel, filename)
+            # update_fields evita acionar o super().save() inteiro sem necessidade
+            sample_file.save(update_fields=['file'])

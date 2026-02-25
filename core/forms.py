@@ -8,31 +8,35 @@ from core.models import Biobank, Collection, Tag
 class BiobankForm(forms.ModelForm):
     class Meta:
         model = Biobank
+        # Removido "institution" da lista de campos
         fields = [
             "name",
-            "institution",
             "visibility",
             "location_label",
             "latitude",
             "longitude",
-            "description", # Alterado de 'notes' para 'description'
+            "description", 
         ]
         widgets = {
             "name": forms.TextInput(attrs={"class": "form-control"}),
-            "institution": forms.TextInput(attrs={
-                "class": "form-control",
-                "placeholder": "Search institution or address"
-            }),
             "visibility": forms.Select(attrs={"class": "form-select"}),
-            "location_label": forms.HiddenInput(),
+            
+            # Campo de endereço que agora aparece para busca dinâmica
+            "location_label": forms.TextInput(attrs={
+                "class": "form-control",
+                "placeholder": "Ex: Universidade de São Paulo, USP",
+                "autocomplete": "off"
+            }),
+            
             "latitude": forms.HiddenInput(),
             "longitude": forms.HiddenInput(),
-            "description": forms.Textarea(attrs={ # Alterado de 'notes'
+            "description": forms.Textarea(attrs={ 
                 "class": "form-control",
                 "rows": 4,
                 "placeholder": "Relevant description about this Biobank"
             }),
         }
+
 
 # ----------------------------------------------------------
 # COLLECTION FORM
@@ -70,4 +74,29 @@ class TagForm(forms.ModelForm):
         widgets = {
             "name": forms.TextInput(attrs={"class": "form-control"}),
             "description": forms.Textarea(attrs={"class": "form-control", "rows": 2}),
+        }
+
+# ----------------------------------------------------------
+# SAMPLE FORM (PARA EDIÇÃO)
+# ----------------------------------------------------------
+from core.models import Sample
+
+class SampleForm(forms.ModelForm):
+    class Meta:
+        model = Sample
+        fields = [
+            "sample_id", "sample_type", "organism_name", 
+            "status", "visibility", "storage_location",
+            "biobank", "collection", "scientific_notes"
+        ]
+        widgets = {
+            "sample_id": forms.TextInput(attrs={"class": "form-control"}),
+            "sample_type": forms.TextInput(attrs={"class": "form-control"}),
+            "organism_name": forms.TextInput(attrs={"class": "form-control"}),
+            "status": forms.Select(attrs={"class": "form-select"}),
+            "visibility": forms.Select(attrs={"class": "form-select"}),
+            "storage_location": forms.TextInput(attrs={"class": "form-control"}),
+            "biobank": forms.Select(attrs={"class": "form-select"}),
+            "collection": forms.Select(attrs={"class": "form-select"}),
+            "scientific_notes": forms.Textarea(attrs={"class": "form-control", "rows": 3}),
         }

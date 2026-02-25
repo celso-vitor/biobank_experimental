@@ -46,7 +46,7 @@ class Sample(models.Model):
     
     # NOVOS CAMPOS (ELN e Dados Técnicos)
     scientific_notes = models.TextField(blank=True, null=True)
-    spectrometry_data = models.JSONField(blank=True, null=True)
+    # Campo de espectrometria removido
 
     # Metadados Físicos
     storage_location = models.CharField(max_length=255, blank=True, null=True)

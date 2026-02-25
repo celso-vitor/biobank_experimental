@@ -1,17 +1,26 @@
 import os
+import environ
 from pathlib import Path
 
 # =========================
-# BASE
+# BASE & ENV
 # =========================
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Inicializa o environ
+env = environ.Env(
+    DEBUG=(bool, True)
+)
+# Tenta ler o arquivo .env se ele existir na raiz do projeto
+environ.Env.read_env(os.path.join(BASE_DIR, '.env'))
 
 # =========================
 # SEGURANÇA / DEBUG
 # =========================
-SECRET_KEY = "dev-secret-key"  # Trocar para uma chave real em produção
-DEBUG = True
-ALLOWED_HOSTS = []
+# Agora busca do .env, se não achar usa a dev-secret-key
+SECRET_KEY = env('SECRET_KEY', default="dev-secret-key") 
+DEBUG = env('DEBUG')
+ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=['*'])
 
 # =========================
 # APLICAÇÕES
@@ -25,13 +34,11 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
 
-    # 2. App Principal (Agora contém o Lab Tools)
+    # 2. App Principal
     "core.apps.CoreConfig",
 
-    # REMOVIDO: "lab_tools"
-    # (Não incluímos mais aqui pois foi integrado ao core)
-
     # 4. Utilitários Externos
+    "import_export",  # <--- AQUI ESTÁ A CORREÇÃO!
     "django_extensions",
     "rest_framework",
     "django_filters",
@@ -63,7 +70,6 @@ TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
         "DIRS": [
-            # O Django vai procurar os templates em: ~/biobank/core/interfaces
             BASE_DIR / "core" / "interfaces",
         ],
         "APP_DIRS": True,
@@ -79,13 +85,10 @@ TEMPLATES = [
 ]
 
 # =========================
-# DATABASE (SQLITE PARA DEV)
+# DATABASE (DINÂMICO: POSTGRES OU SQLITE)
 # =========================
 DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
-    }
+    "default": env.db("DATABASE_URL", default=f"sqlite:///{BASE_DIR / 'db.sqlite3'}")
 }
 
 # =========================
@@ -93,16 +96,16 @@ DATABASES = {
 # =========================
 STATIC_URL = "/static/"
 STATICFILES_DIRS = [
-    # O Django vai procurar estáticos em: ~/biobank/core/interfaces
     BASE_DIR / "core" / "interfaces",
+    BASE_DIR / "static",
 ]
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
 # =========================
 # MEDIA (UPLOADS DE AMOSTRAS)
 # =========================
-MEDIA_URL = "/media/"
-MEDIA_ROOT = BASE_DIR / "media"
+MEDIA_URL = "/data/"
+MEDIA_ROOT = BASE_DIR / "data"
 
 # =========================
 # INTERNACIONALIZAÇÃO
