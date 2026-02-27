@@ -7,7 +7,7 @@
 
 {% block extra_css %}
 <style>
-    /* === PADRÃO VISUAL HARMONIZADO (Igual Samples) === */
+    /* === PADRÃO VISUAL HARMONIZADO === */
     .form-section-title {
         font-size: 0.85rem;
         font-weight: 700;
@@ -112,13 +112,15 @@
                         </div>
 
                         <div class="col-md-3">
-                            <label class="section-label">Visibilidade <span class="text-danger">*</span></label>
-                            <select name="visibility" class="form-select" required>
-                                <option value="private" selected>Privada</option>
-                                <option value="group">Grupo de Pesquisa</option>
-                                <option value="biobank">Biobanco (Interno)</option>
-                                <option value="public">Pública</option>
-                            </select>
+                            <div class="form-check form-switch p-0">
+                                <label class="section-label mb-1">Disponibilidade Pública</label>
+                                <div class="d-flex align-items-center mt-2">
+                                    <input class="form-check-input ms-0 me-2" type="checkbox" name="is_public" id="id_is_public">
+                                    <label class="form-check-label small text-muted" for="id_is_public">
+                                        Público
+                                    </label>
+                                </div>
+                            </div>
                         </div>
 
                         <div class="col-12">
@@ -215,12 +217,10 @@
                                 <i class="bi bi-building text-muted me-1"></i>{{ col.biobank.name }}
                             </td>
                             <td>
-                                {% if col.visibility == 'public' %}
-                                    <span class="badge bg-success-subtle text-success border border-success-subtle">Public</span>
-                                {% elif col.visibility == 'private' %}
-                                    <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle">Private</span>
+                                {% if col.is_public %}
+                                    <span class="badge bg-success-subtle text-success border border-success-subtle">Pública</span>
                                 {% else %}
-                                    <span class="badge bg-info-subtle text-info border border-info-subtle">{{ col.get_visibility_display }}</span>
+                                    <span class="badge bg-light text-secondary border border-secondary-subtle">Restrita</span>
                                 {% endif %}
                             </td>
                             <td class="small">{{ col.owner.get_full_name|default:col.owner.username }}</td>
@@ -268,11 +268,10 @@
 document.addEventListener("DOMContentLoaded", () => {
     
     // =========================================================
-    // 1. SISTEMA DE TAGS (Igual Samples)
+    // 1. SISTEMA DE TAGS
     // =========================================================
     const hiddenTagContainer = document.getElementById("tagHiddenInputs");
 
-    // Função para atualizar inputs baseados na seleção visual
     function updateTagInputs() {
         hiddenTagContainer.innerHTML = "";
         document.querySelectorAll(".selectable-tag.selected").forEach(chip => {
@@ -284,26 +283,21 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
-    // Inicializa lógica de clique nas tags
     function initTagClicks() {
         document.querySelectorAll(".selectable-tag").forEach(chip => {
-            // Evita adicionar listener duplicado
             if(chip.dataset.bound === "true") return;
             chip.dataset.bound = "true";
 
             chip.addEventListener("click", function() {
                 this.classList.toggle("selected");
-                this.classList.toggle("bg-light"); // Remove cinza
-                this.classList.toggle("text-secondary"); // Remove texto cinza
-                
-                // Classes de selecionado já estão no CSS (.selected)
+                this.classList.toggle("bg-light"); 
+                this.classList.toggle("text-secondary"); 
                 updateTagInputs();
             });
         });
     }
     initTagClicks();
 
-    // AJAX: Criar Nova Tag
     const addTagForm = document.getElementById("addTagForm");
     if (addTagForm) {
         addTagForm.addEventListener("submit", function(e) {
@@ -327,7 +321,6 @@ document.addEventListener("DOMContentLoaded", () => {
             .then(res => res.json())
             .then(data => {
                 if(data.id) {
-                    // Adiciona a tag visualmente e já selecionada
                     const container = document.getElementById("tagChipContainer");
                     const span = document.createElement("span");
                     span.className = "badge rounded-pill border selectable-tag m-1 p-2 selected bg-primary text-white border-primary";
@@ -335,11 +328,9 @@ document.addEventListener("DOMContentLoaded", () => {
                     span.innerText = data.name;
                     container.appendChild(span);
 
-                    // Fecha modal
                     bootstrap.Modal.getInstance(document.getElementById("addTagModal")).hide();
                     inputName.value = "";
                     
-                    // Re-bind eventos e atualiza inputs
                     initTagClicks();
                     updateTagInputs();
                 } else {
@@ -353,7 +344,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 
     // =========================================================
-    // 2. SISTEMA DE KEYWORDS (Igual Samples)
+    // 2. SISTEMA DE KEYWORDS
     // =========================================================
     const addKeywordForm = document.getElementById("addKeywordForm");
     if(addKeywordForm) {
@@ -373,7 +364,6 @@ document.addEventListener("DOMContentLoaded", () => {
                     return;
                 }
 
-                // 1. Visual Chip
                 const container = document.getElementById("keywordChipContainer");
                 const defaultMsg = container.querySelector(".default-msg");
                 if(defaultMsg) defaultMsg.style.display = "none";
@@ -385,18 +375,16 @@ document.addEventListener("DOMContentLoaded", () => {
                     <i class="bi bi-x-circle-fill ms-2 text-danger" style="cursor:pointer"></i>
                 `;
 
-                // 2. Hidden Input (Formato Key:::Value)
                 const hiddenContainer = document.getElementById("keywordHiddenInputs");
                 const input = document.createElement("input");
                 input.type = "hidden";
                 input.name = "keyword_pairs";
                 input.value = `${k}:::${v}`;
 
-                // 3. Lógica de Remover
                 chip.querySelector("i").addEventListener("click", () => {
                     chip.remove();
                     input.remove();
-                    if(container.children.length === 1) { // Só sobrou a msg default (hidden)
+                    if(container.children.length === 1) { 
                         if(defaultMsg) defaultMsg.style.display = "block";
                     }
                 });
@@ -404,7 +392,6 @@ document.addEventListener("DOMContentLoaded", () => {
                 container.appendChild(chip);
                 hiddenContainer.appendChild(input);
 
-                // 4. Limpar e Fechar
                 keyInput.value = "";
                 valInput.value = "";
                 bootstrap.Modal.getInstance(document.getElementById("addKeywordModal")).hide();

@@ -119,13 +119,16 @@
                             <input type="text" name="name" class="form-control fw-bold" placeholder="Ex: Institute of Virology Biobank" required>
                         </div>
 
-                        <div class="mb-3">
-                            <label class="section-label">Default Visibility</label>
-                            <select name="visibility" class="form-select">
-                                <option value="private">Private (Only You)</option>
-                                <option value="group">Group (Research Team)</option>
-                                <option value="public">Public (Open Data)</option>
-                            </select>
+                        <div class="mb-4">
+                            <div class="form-check form-switch p-0 ms-0">
+                                <label class="section-label mb-1">Public Availability</label>
+                                <div class="d-flex align-items-center">
+                                    <input class="form-check-input ms-0 me-2" type="checkbox" name="is_public" id="id_is_public">
+                                    <label class="form-check-label small text-muted" for="id_is_public">
+                                        Check to make this biobank visible to external catalogs.
+                                    </label>
+                                </div>
+                            </div>
                         </div>
 
                         <div class="mb-3">
@@ -177,13 +180,15 @@
                                 <input type="text" name="location_label" id="id_location_label" class="form-control" placeholder="Search address or click on map...">
                             </div>
                             <div class="form-text small text-end" id="searchStatus">Type to search or click map</div>
+                            <input type="hidden" name="latitude" id="id_latitude">
+                            <input type="hidden" name="longitude" id="id_longitude">
                         </div>
 
                         <div class="mb-3">
                             <div id="map"></div>
                             <small class="text-muted d-block mt-1 text-end fst-italic">Drag pin or click map to auto-fill address.</small>
                         </div>
-		    </div>
+                    </div>
                 </div>
 
                 <div class="text-end mt-4 pt-3 border-top">
@@ -206,9 +211,9 @@
                     <tr>
                         <th class="ps-4">Biobank Name</th>
                         <th>Location</th>
-                        <th>Manager</th>
+                        <th>Manager / Visibility</th>
                         <th>Status</th>
-                        <th>Actions</th>
+                        <th class="text-end pe-4">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -228,22 +233,29 @@
                             {{ biobank.location_label|default:"Not specified" }}
                         </td>
                         <td>
-                            <div class="d-flex align-items-center">
+                            <div class="d-flex align-items-center mb-1">
                                 <div class="avatar-xs bg-light rounded-circle text-center me-2 small fw-bold" style="width:24px; height:24px; line-height:24px;">
                                     {{ biobank.owner.username|first|upper }}
                                 </div>
                                 <span class="small">{{ biobank.owner.get_full_name|default:biobank.owner.username }}</span>
                             </div>
+                            {% if biobank.is_public %}
+                                <span class="badge bg-info-subtle text-info border border-info-subtle small"><i class="bi bi-globe me-1"></i>Public</span>
+                            {% else %}
+                                <span class="badge bg-light text-secondary border small">Restricted</span>
+                            {% endif %}
                         </td>
                         <td>
                             {% if biobank.is_active %}
-                                <span class="badge bg-success-subtle text-success border border-success-subtle">Active</span>
+                                <span class="badge bg-success-subtle text-success border border-success-subtle">Operational</span>
                             {% else %}
                                 <span class="badge bg-secondary">Inactive</span>
                             {% endif %}
                         </td>
-                        <td>
-                            <a href="{% url 'biobank_members' biobank.id %}" class="btn btn-sm btn-outline-secondary">Members</a>
+                        <td class="text-end pe-4">
+                            <button class="btn btn-sm btn-light text-muted border-0" disabled>
+                                <i class="bi bi-gear"></i>
+                            </button>
                         </td>
                     </tr>
                     {% empty %}
@@ -295,7 +307,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 .then(response => response.json())
                 .then(data => {
                     if(data && data.display_name) {
-                        addressInput.value = data.display_name; // Preenche o campo de texto
+                        addressInput.value = data.display_name;
                         statusLabel.textContent = "Address found!";
                         statusLabel.className = "form-text small text-end text-success fw-bold";
                     } else {
@@ -308,19 +320,17 @@ document.addEventListener("DOMContentLoaded", () => {
                 });
         }
 
-        // --- FUNÇÃO PARA ATUALIZAR O MARCADOR ---
         function updateMarker(lat, lng, fetchAddress=false) {
             if (marker) {
                 marker.setLatLng([lat, lng]);
             } else {
                 marker = L.marker([lat, lng], {draggable: true}).addTo(map);
                 
-                // Evento: Arrastar o pino atualiza Lat/Lon e Endereço
                 marker.on('dragend', function(e) {
                     var coord = e.target.getLatLng();
                     latInput.value = coord.lat.toFixed(6);
                     lngInput.value = coord.lng.toFixed(6);
-                    getAddressFromCoords(coord.lat, coord.lng); // Busca endereço ao soltar
+                    getAddressFromCoords(coord.lat, coord.lng);
                 });
             }
             latInput.value = lat.toFixed(6);
@@ -332,12 +342,10 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         }
 
-        // Evento: Clique no mapa
         map.on('click', function(e) {
-            updateMarker(e.latlng.lat, e.latlng.lng, true); // True = Busca o endereço
+            updateMarker(e.latlng.lat, e.latlng.lng, true);
         });
 
-        // --- BUSCA DINÂMICA VIA TEXTO (GEOCODING) ---
         addressInput.addEventListener('input', function() {
             clearTimeout(searchTimeout);
             statusLabel.textContent = "Typing...";
@@ -354,7 +362,6 @@ document.addEventListener("DOMContentLoaded", () => {
                             if(data && data.length > 0) {
                                 var lat = parseFloat(data[0].lat);
                                 var lon = parseFloat(data[0].lon);
-                                // Atualiza marcador mas NÃO busca endereço reverso (pois já temos o texto)
                                 updateMarker(lat, lon, false); 
                                 statusLabel.textContent = "Location found!";
                                 statusLabel.className = "form-text small text-end text-success fw-bold";
@@ -408,13 +415,11 @@ document.addEventListener("DOMContentLoaded", () => {
                 const container = document.getElementById("keywordChipContainer");
                 const hiddenContainer = document.getElementById("keywordHiddenInputs");
                 
-                // Chip Visual
                 const chip = document.createElement("span");
                 chip.className = "badge bg-light text-dark border p-2 m-1 d-inline-flex align-items-center";
                 chip.innerHTML = `<strong>${key}:</strong>&nbsp;${val} <i class="bi bi-x ms-2 text-danger" style="cursor:pointer" onclick="this.parentNode.remove()"></i>`;
                 container.appendChild(chip);
 
-                // Input Hidden
                 const input = document.createElement("input");
                 input.type = "hidden";
                 input.name = "keyword_pairs";

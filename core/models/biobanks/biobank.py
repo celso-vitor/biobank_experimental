@@ -1,10 +1,8 @@
 from django.db import models
 from django.contrib.auth.models import User
 
-# Importação direta dos módulos auxiliares
 from core.models.tags.model import Tag
 from core.models.keywords.model import KeywordValue
-# Importação do ResearchGroup para vínculo
 from core.models.research_groups.model import ResearchGroup
 
 class Biobank(models.Model):
@@ -57,7 +55,6 @@ class Biobank(models.Model):
         help_text="Gestor principal do Biobanco"
     )
 
-    # Novo Campo: Vínculo com Grupo de Pesquisa
     research_group = models.ForeignKey(
         ResearchGroup,
         on_delete=models.SET_NULL,
@@ -67,17 +64,10 @@ class Biobank(models.Model):
         help_text="Grupo de pesquisa responsável pelo Biobanco"
     )
 
-    VISIBILITY_CHOICES = [
-        ("private", "Privado (Apenas Dono)"),
-        ("group", "Grupo de Pesquisa"),
-        ("biobank", "Restrito ao Biobank (Interno)"),
-        ("public", "Público"),
-    ]
-
-    visibility = models.CharField(
-        max_length=20,
-        choices=VISIBILITY_CHOICES,
-        default="group",
+    # Novo formato simplificado
+    is_public = models.BooleanField(
+        default=False,
+        help_text="Marque para disponibilizar este biobanco publicamente"
     )
 
     # =========================

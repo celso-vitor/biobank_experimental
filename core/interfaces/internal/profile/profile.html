@@ -40,33 +40,44 @@
         </div>
 
         <div class="col-md-8">
-            <h5 class="fw-bold mb-3 text-secondary">Access & Permissions</h5>
+            <h5 class="fw-bold mb-3 text-secondary">My Managed Entities</h5>
             
             <div class="card shadow-sm border-0 mb-4">
-                <div class="card-header bg-white">
-                    <i class="bi bi-building me-2 text-primary"></i>Biobank Permissions
+                <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                    <span><i class="bi bi-building me-2 text-primary"></i>Your Biobanks</span>
+                    <span class="badge bg-light text-dark border">{{ user_biobanks|length }}</span>
                 </div>
                 <div class="card-body p-0">
                     <div class="table-responsive">
                         <table class="table mb-0 align-middle">
                             <thead class="bg-light">
                                 <tr>
-                                    <th>Biobank Name</th>
-                                    <th>Role</th>
+                                    <th class="ps-3">Biobank Name</th>
+                                    <th>Status</th>
+                                    <th>Visibility</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {% for role in biobank_roles %}
+                                {% for biobank in user_biobanks %}
                                 <tr>
-                                    <td class="fw-bold">{{ role.biobank.name }}</td>
+                                    <td class="ps-3 fw-bold">{{ biobank.name }}</td>
                                     <td>
-                                        <span class="badge bg-primary-subtle text-primary border border-primary-subtle">
-                                            {{ role.get_role_display }}
-                                        </span>
+                                        {% if biobank.is_active %}
+                                            <span class="text-success small"><i class="bi bi-check-circle me-1"></i>Active</span>
+                                        {% else %}
+                                            <span class="text-muted small">Inactive</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if biobank.is_public %}
+                                            <span class="badge bg-info-subtle text-info border border-info-subtle">Public</span>
+                                        {% else %}
+                                            <span class="badge bg-light text-secondary border">Restricted</span>
+                                        {% endif %}
                                     </td>
                                 </tr>
                                 {% empty %}
-                                <tr><td colspan="2" class="text-center text-muted py-3">No biobank roles assigned.</td></tr>
+                                <tr><td colspan="3" class="text-center text-muted py-3">You don't own any biobank yet.</td></tr>
                                 {% endfor %}
                             </tbody>
                         </table>
@@ -75,30 +86,35 @@
             </div>
 
             <div class="card shadow-sm border-0">
-                <div class="card-header bg-white">
-                    <i class="bi bi-collection me-2 text-success"></i>Collection Permissions
+                <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                    <span><i class="bi bi-collection me-2 text-success"></i>Your Collections</span>
+                    <span class="badge bg-light text-dark border">{{ user_collections|length }}</span>
                 </div>
                 <div class="card-body p-0">
                     <div class="table-responsive">
                         <table class="table mb-0 align-middle">
                             <thead class="bg-light">
                                 <tr>
-                                    <th>Collection</th>
-                                    <th>Role</th>
+                                    <th class="ps-3">Collection Name</th>
+                                    <th>Biobank</th>
+                                    <th>Visibility</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {% for role in collection_roles %}
+                                {% for collection in user_collections %}
                                 <tr>
-                                    <td class="fw-bold">{{ role.collection.name }}</td>
+                                    <td class="ps-3 fw-bold">{{ collection.name }}</td>
+                                    <td class="small text-muted">{{ collection.biobank.name }}</td>
                                     <td>
-                                        <span class="badge bg-success-subtle text-success border border-success-subtle">
-                                            {{ role.get_role_display }}
-                                        </span>
+                                        {% if collection.is_public %}
+                                            <span class="badge bg-success-subtle text-success border border-success-subtle">Public</span>
+                                        {% else %}
+                                            <span class="badge bg-light text-secondary border">Restricted</span>
+                                        {% endif %}
                                     </td>
                                 </tr>
                                 {% empty %}
-                                <tr><td colspan="2" class="text-center text-muted py-3">No collection roles assigned.</td></tr>
+                                <tr><td colspan="3" class="text-center text-muted py-3">You don't own any collection yet.</td></tr>
                                 {% endfor %}
                             </tbody>
                         </table>

@@ -2,7 +2,6 @@ from django.contrib import admin
 from django.db.models import Q
 from django.utils.html import format_html
 
-# Novas importações para Import/Export em Massa (Planilhas)
 from import_export import resources
 from import_export.admin import ImportExportModelAdmin
 
@@ -12,10 +11,15 @@ from core.models import (
     Sample,
     SampleFile,
     Event,
-    CollectionUserRole,
     Tag,
     Keyword,
     KeywordValue,
+    # === NOVOS MODELOS BIOLÓGICOS ===
+    Bacteria,
+    Phage,
+    HostRange,
+    Vector,
+    Construction
 )
 
 # ============================================================
@@ -24,23 +28,21 @@ from core.models import (
 class BiobankResource(resources.ModelResource):
     class Meta:
         model = Biobank
-        # Campos que o usuário verá no Excel
-        fields = ('id', 'name', 'description', 'location_label', 'visibility', 'is_active', 'owner__username')
+        fields = ('id', 'name', 'description', 'location_label', 'is_public', 'is_active', 'owner__username')
         export_order = fields
 
 class CollectionResource(resources.ModelResource):
     class Meta:
         model = Collection
-        fields = ('id', 'name', 'description', 'biobank__name', 'owners_display')
+        fields = ('id', 'name', 'description', 'biobank__name')
         export_order = fields
 
 class SampleResource(resources.ModelResource):
     class Meta:
         model = Sample
-        # Ajuste esta lista com os campos exatos que existem no seu modelo Sample
         fields = (
             'id', 'sample_id', 'sample_type', 'organism_name', 'status', 
-            'visibility', 'collection__name', 'biobank__name', 'owner__username', 
+            'is_public', 'collection__name', 'biobank__name', 'owner__username', 
             'scientific_notes', 'created_at'
         )
         export_order = fields
@@ -87,49 +89,44 @@ class SampleFileInline(admin.TabularInline):
     extra = 0
     readonly_fields = ("uploaded_at", "mime_type", "file_size")
 
-class CollectionUserRoleInline(admin.TabularInline):
-    model = CollectionUserRole
-    extra = 0
-
 # ============================================================
-# BIOBANK (AGORA COM SUPORTE A PLANILHAS)
+# BIOBANK 
 # ============================================================
 @admin.register(Biobank)
-class BiobankAdmin(ImportExportModelAdmin): # <-- Trocado
-    resource_classes = [BiobankResource]    # <-- Nova configuração
+class BiobankAdmin(ImportExportModelAdmin): 
+    resource_classes = [BiobankResource]    
     
-    list_display = ("name", "location_label", "visibility", "is_active")
+    list_display = ("name", "location_label", "is_public", "is_active")
     search_fields = ("name", "location_label")
-    list_filter = ("visibility", "is_active")
+    list_filter = ("is_public", "is_active")
     ordering = ("name",)
     filter_horizontal = ("tags", "keywords")
     readonly_fields = ("latitude", "longitude")
 
 # ============================================================
-# COLLECTION (AGORA COM SUPORTE A PLANILHAS)
+# COLLECTION 
 # ============================================================
 @admin.register(Collection)
-class CollectionAdmin(ImportExportModelAdmin): # <-- Trocado
-    resource_classes = [CollectionResource]    # <-- Nova configuração
+class CollectionAdmin(ImportExportModelAdmin): 
+    resource_classes = [CollectionResource]    
     
-    list_display = ("name", "biobank", "owners_display")
+    list_display = ("name", "biobank")
     search_fields = ("name", "description")
     list_filter = ("biobank",)
-    inlines = [CollectionUserRoleInline]
     filter_horizontal = ("tags", "keywords")
 
 # ============================================================
-# SAMPLE (DASHBOARD COM PLANILHAS MANTENDO SUA LÓGICA)
+# SAMPLE (CLASSE BASE)
 # ============================================================
 @admin.register(Sample)
-class SampleAdmin(ImportExportModelAdmin):     # <-- Trocado
-    resource_classes = [SampleResource]        # <-- Nova configuração
+class SampleAdmin(ImportExportModelAdmin):     
+    resource_classes = [SampleResource]        
 
     list_display = (
-        "sample_id", "show_status_color", "visibility", "owner", 
+        "sample_id", "show_status_color", "is_public", "owner", 
         "sample_type", "organism_name", "collection", "created_at",
     )
-    list_filter = ("status", "visibility", "collection", "biobank", "is_active", "created_at")
+    list_filter = ("status", "is_public", "collection", "biobank", "is_active", "created_at")
     search_fields = ("sample_id", "organism_name", "sample_type", "uuid", "owner__username", "scientific_notes")
     ordering = ("-created_at",)
     date_hierarchy = 'created_at'
@@ -153,13 +150,50 @@ class SampleAdmin(ImportExportModelAdmin):     # <-- Trocado
         if request.user.is_superuser:
             return qs
         return qs.filter(
-            Q(owner=request.user) | Q(visibility='public') | Q(visibility='biobank') | Q(visibility='group')
+            Q(owner=request.user) | Q(is_public=True)
         ).distinct()
 
     def has_delete_permission(self, request, obj=None):
         if request.user.is_superuser: return True
         if obj and obj.owner == request.user: return True
         return False
+
+# ============================================================
+# === NOVAS CLASSES BIOLÓGICAS (HERANÇA DE SAMPLE) ===
+# ============================================================
+
+@admin.register(Bacteria)
+class BacteriaAdmin(admin.ModelAdmin):
+    list_display = ("sample_id", "species", "strain", "owner", "is_public")
+    search_fields = ("sample_id", "species", "strain")
+    list_filter = ("is_public", "status")
+    filter_horizontal = ("tags", "keywords")
+
+@admin.register(Phage)
+class PhageAdmin(admin.ModelAdmin):
+    list_display = ("sample_id", "taxonomy", "morphotype", "lifestyle", "owner")
+    search_fields = ("sample_id", "taxonomy", "morphotype")
+    list_filter = ("morphotype", "lifestyle", "genome_type")
+    filter_horizontal = ("tags", "keywords")
+
+@admin.register(HostRange)
+class HostRangeAdmin(admin.ModelAdmin):
+    list_display = ("phage", "bacteria", "is_isolation_host", "efficiency_eop")
+    list_filter = ("is_isolation_host",)
+    search_fields = ("phage__sample_id", "bacteria__sample_id", "phage__taxonomy", "bacteria__species")
+
+@admin.register(Vector)
+class VectorAdmin(admin.ModelAdmin):
+    list_display = ("sample_id", "name_official", "vector_type", "vector_size_bp", "owner")
+    search_fields = ("sample_id", "name_official", "vector_type")
+    list_filter = ("vector_type",)
+    filter_horizontal = ("tags", "keywords")
+
+@admin.register(Construction)
+class ConstructionAdmin(admin.ModelAdmin):
+    list_display = ("sample_id", "construction_name", "parent_vector", "host_strain", "final_size_bp")
+    search_fields = ("sample_id", "construction_name", "insert_name")
+    filter_horizontal = ("tags", "keywords")
 
 # ============================================================
 # OUTROS

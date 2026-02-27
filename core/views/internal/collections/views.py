@@ -9,7 +9,6 @@ from core.forms import CollectionForm
 
 from core.models import (
     Collection,
-    CollectionUserRole,
     Tag,
     Keyword,
     KeywordValue,
@@ -18,7 +17,6 @@ from core.models import (
 from core.permissions.collections import (
     can_view_collection,
     can_edit_collection,
-    can_manage_collection_permissions,
 )
 
 @login_required
@@ -37,12 +35,6 @@ def collections_view(request):
                     collection.owner = user
                     collection.is_active = True
                     collection.save()
-
-                    CollectionUserRole.objects.create(
-                        user=user,
-                        collection=collection,
-                        role=CollectionUserRole.OWNER
-                    )
 
                     selected_tags = request.POST.getlist("tags")
                     if selected_tags:
@@ -64,7 +56,6 @@ def collections_view(request):
                 messages.error(request, f"Erro ao criar Collection: {e}")
                 return redirect("/?page=collections")
         else:
-            # MELHORIA: Mostra o erro específico do formulário
             errors = form.errors.as_text()
             messages.error(request, f"Dados inválidos: {errors}")
             return redirect("/?page=collections")
@@ -73,7 +64,8 @@ def collections_view(request):
     elif action == "deactivate_collection":
         cid = request.POST.get("collection_id")
         collection = get_object_or_404(Collection, id=cid)
-        if not can_manage_collection_permissions(user, collection):
+        # Mudamos para can_edit_collection já que não há mais permissão de "management" separada
+        if not can_edit_collection(user, collection):
             raise PermissionDenied
         collection.is_active = False
         collection.save(update_fields=["is_active"])
@@ -99,7 +91,7 @@ def collections_view(request):
     for c in collections_qs:
         if can_view_collection(user, c):
             c.can_edit = can_edit_collection(user, c)
-            c.can_manage_members = can_manage_collection_permissions(user, c)
+            c.can_manage_members = False
             visible_collections.append(c)
 
     ctx["collections"] = visible_collections

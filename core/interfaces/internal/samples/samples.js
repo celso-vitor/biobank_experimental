@@ -1,6 +1,5 @@
 /* =========================================================
-   SAMPLES PAGE JS - VERSÃO FINAL REVISADA (FIXED FEEDBACK)
-   Sincronizado com IDs de add_tag.html e Biobank Distribution
+   SAMPLES PAGE JS - VERSÃO FINAL (Sem Filogenia, Com EAV e Storage Dinâmico)
 ========================================================= */
 
 function getCsrfToken() {
@@ -9,33 +8,33 @@ function getCsrfToken() {
 
 document.addEventListener("DOMContentLoaded", () => {
 
-    // 0. Carregar dados de coleções do JSON oculto no HTML
-    let collectionsData = [];
-    const collectionsScript = document.getElementById("collectionsData");
-    if (collectionsScript) {
-        try {
-            collectionsData = JSON.parse(collectionsScript.textContent);
-        } catch (e) { console.error("Erro coleções:", e); }
+    /* --- 0. INICIALIZAÇÃO DO ELN (QUILL) --- */
+    let quill = null;
+    if(document.getElementById('eln-editor')) {
+        quill = new Quill('#eln-editor', { theme: 'snow' });
     }
 
-    /* --- 1. FORM PRINCIPAL (Amostra) --- */
+    /* --- 1. FORM PRINCIPAL (Validações e Envios) --- */
     const mainSampleForm = document.getElementById("mainSampleForm");
     if (mainSampleForm) {
         mainSampleForm.addEventListener("submit", function(e) {
-            const quillEditor = document.querySelector('#eln-editor .ql-editor');
-            if (quillEditor) {
-                document.getElementById("scientific_notes_input").value = quillEditor.innerHTML;
+            // Salva o conteúdo do Quill Editor
+            if (quill) {
+                const notesInput = document.getElementById("scientific_notes_input");
+                if(notesInput) notesInput.value = quill.root.innerHTML;
             }
 
-            if (document.querySelectorAll('input[name="dist_biobank_id[]"]').length === 0) {
+            // Valida se selecionou pelo menos um biobanco
+            const biobankInputs = document.querySelectorAll('input[name="dist_biobank_id[]"]');
+            if (biobankInputs.length === 0) {
                 e.preventDefault();
-                // Usa um alerta mais suave ou customizado se preferir, mas o alert funciona para validação
-                alert("Please add at least one Biobank to the distribution list.");
+                alert("Adicione pelo menos um Biobanco físico.");
+                return false;
             }
         });
     }
 
-    /* --- 2. TAGS (INTERCEPTANDO O FORM EXISTENTE) --- */
+    /* --- 2. TAGS (Se os modais forem usados no futuro) --- */
     function initTagSystem() {
         document.querySelectorAll(".selectable-tag").forEach(chip => {
             if (chip.dataset.bound) return;
@@ -51,6 +50,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     function updateTagInputs() {
         const container = document.getElementById("tagHiddenInputs");
+        if (!container) return;
         container.innerHTML = "";
         document.querySelectorAll(".selectable-tag.selected").forEach(chip => {
             const input = document.createElement("input");
@@ -66,17 +66,11 @@ document.addEventListener("DOMContentLoaded", () => {
         const tagNameInput = document.getElementById("tagNameInput");
         const btnSave = document.getElementById("btnSaveTagAJAX");
 
-        if (addTagForm) {
+        if (addTagForm && btnSave) {
             addTagForm.addEventListener("submit", function(e) {
-                e.preventDefault(); // Impede o reload da página
-
+                e.preventDefault();
                 const tagName = tagNameInput.value.trim();
                 if (!tagName) return;
-
-                // Feedback visual (Spinner)
-                const spinner = btnSave.querySelector(".spinner-border");
-                if (spinner) spinner.classList.remove("d-none");
-                btnSave.disabled = true;
 
                 const fd = new FormData();
                 fd.append('name', tagName);
@@ -86,117 +80,27 @@ document.addEventListener("DOMContentLoaded", () => {
                 .then(res => res.json())
                 .then(data => {
                     if (data.id) {
-                        // Adiciona o chip visualmente
                         const container = document.getElementById("tagChipContainer");
-                        const span = document.createElement("span");
-                        span.className = "badge rounded-pill border selectable-tag m-1 p-2 selected bg-primary text-white";
-                        span.dataset.tagId = data.id;
-                        span.innerText = data.name;
-                        span.style.cursor = "pointer";
-                        container.appendChild(span);
-
-                        // Limpa e fecha
+                        if (container) {
+                            const span = document.createElement("span");
+                            span.className = "badge rounded-pill border selectable-tag m-1 p-2 selected bg-primary text-white";
+                            span.dataset.tagId = data.id;
+                            span.innerText = data.name;
+                            span.style.cursor = "pointer";
+                            container.appendChild(span);
+                        }
                         tagNameInput.value = "";
                         const modal = bootstrap.Modal.getInstance(document.getElementById("addTagModal"));
                         if (modal) modal.hide();
-
                         initTagSystem();
                         updateTagInputs();
-                    } else {
-                        alert("Error: " + (data.error || "Tag already exists or invalid."));
                     }
-                })
-                .catch(err => alert("Communication error."))
-                .finally(() => {
-                    if (spinner) spinner.classList.add("d-none");
-                    btnSave.disabled = false;
                 });
             });
         }
     }
 
-    /* --- 3. BIOBANK & COLLECTIONS (FIXED EVENT DELEGATION) --- */
-    function initBiobankLogic() {
-        const container = document.getElementById('selectedBiobanksContainer');
-        const noMsg = document.getElementById('noBiobankMsg');
-
-        // Usa delegação de eventos no Document para pegar cliques em elementos criados dinamicamente
-        document.addEventListener('click', function(e) {
-            
-            // --- ADD BIOBANK BUTTON ---
-            const addBtn = e.target.closest('.btn-add-bb');
-            if (addBtn) {
-                e.preventDefault();
-                e.stopPropagation();
-
-                const opt = addBtn.closest('.sheets-option');
-                const bbId = opt.dataset.value;
-                const bbName = opt.dataset.name;
-
-                // Evita duplicatas
-                if (container.querySelector(`[data-bb-id="${bbId}"]`)) {
-                    // Feedback opcional: Avisar que já foi adicionado
-                    // alert("This Biobank is already selected."); 
-                    return;
-                }
-
-                // Esconde msg "Nenhum selecionado"
-                if (noMsg) noMsg.style.display = 'none';
-
-                const filteredCols = collectionsData.filter(c => c.biobank_id == bbId);
-                let colOptions = '<option value="">-- No Collection (Root) --</option>';
-                filteredCols.forEach(c => colOptions += `<option value="${c.id}">${c.name}</option>`);
-
-                const row = document.createElement('div');
-                row.className = "d-flex align-items-center justify-content-between bg-white border rounded p-3 mb-2 bb-row shadow-sm";
-                row.dataset.bbId = bbId;
-                
-                // Animação suave de entrada
-                row.style.animation = "fadeIn 0.3s"; 
-
-                row.innerHTML = `
-                    <div class="d-flex align-items-center flex-grow-1">
-                        <i class="bi bi-building me-3 text-primary fs-5"></i>
-                        <div class="flex-grow-1">
-                            <span class="fw-bold d-block mb-1">${bbName}</span>
-                            <input type="hidden" name="dist_biobank_id[]" value="${bbId}">
-                            <input type="hidden" name="dist_collection_id[]" class="col-hidden" value="">
-                            <div class="d-flex gap-2">
-                                <div class="input-group input-group-sm" style="width: 100px;">
-                                    <span class="input-group-text">Qty</span>
-                                    <input type="number" name="dist_quantity[]" class="form-control" value="1" min="1">
-                                </div>
-                                <select class="form-select form-select-sm col-selector" style="max-width: 250px;">
-                                    ${colOptions}
-                                </select>
-                            </div>
-                        </div>
-                    </div>
-                    <button type="button" class="btn btn-link text-danger remove-bb"><i class="bi bi-trash"></i></button>
-                `;
-
-                // Bind do select
-                const sel = row.querySelector('.col-selector');
-                const hid = row.querySelector('.col-hidden');
-                sel.onchange = () => hid.value = sel.value;
-
-                container.appendChild(row);
-            }
-
-            // --- REMOVE BIOBANK BUTTON ---
-            const removeBtn = e.target.closest('.remove-bb');
-            if (removeBtn) {
-                const row = removeBtn.closest('.bb-row');
-                row.remove();
-                
-                // Se não houver mais linhas, mostra a mensagem novamente
-                if (container.querySelectorAll('.bb-row').length === 0) {
-                    if (noMsg) noMsg.style.display = 'block';
-                }
-            }
-        });
-    }
-
+    /* --- 3. KEYWORDS GENÉRICAS --- */
     function initKeywordSystem() {
         const btnSave = document.getElementById("btnSaveKeywordAJAX");
         if (btnSave) {
@@ -206,24 +110,266 @@ document.addEventListener("DOMContentLoaded", () => {
                 const v = document.getElementById("keywordValue").value;
                 if (!k || !v) return;
 
+                const defaultMsg = document.querySelector('#keywordChipContainer .default-msg');
+                if (defaultMsg) defaultMsg.style.display = 'none';
+
                 const chip = document.createElement("span");
                 chip.className = "badge bg-light text-dark border p-2 m-1 d-inline-flex align-items-center";
                 chip.innerHTML = `<strong>${k}</strong>: ${v} <i class="bi bi-x ms-2 text-danger" style="cursor:pointer;"></i>`;
 
                 const hidden = document.createElement("input");
-                hidden.type = "hidden"; hidden.name = "keyword_pairs"; hidden.value = k + ":::" + v;
+                hidden.type = "hidden"; 
+                hidden.name = "keyword_pairs"; 
+                hidden.value = k + ":::" + v;
 
-                chip.querySelector(".bi-x").onclick = () => { chip.remove(); hidden.remove(); };
-                document.getElementById("keywordChipContainer").appendChild(chip);
-                document.getElementById("keywordHiddenInputs").appendChild(hidden);
-                bootstrap.Modal.getInstance(document.getElementById("addKeywordModal")).hide();
-                document.getElementById("keywordKey").value = ""; document.getElementById("keywordValue").value = "";
+                chip.querySelector(".bi-x").onclick = () => { 
+                    chip.remove(); hidden.remove(); 
+                    if(document.querySelectorAll('#keywordChipContainer .badge').length === 0 && defaultMsg) {
+                        defaultMsg.style.display = 'block';
+                    }
+                };
+                
+                document.getElementById("keywordChipContainer")?.appendChild(chip);
+                document.getElementById("keywordHiddenInputs")?.appendChild(hidden);
+                
+                const modal = bootstrap.Modal.getInstance(document.getElementById("addKeywordModal"));
+                if (modal) modal.hide();
+                
+                document.getElementById("keywordKey").value = ""; 
+                document.getElementById("keywordValue").value = "";
             };
         }
     }
 
+    /* --- 4. CONSTRUTOR DINÂMICO DE LOCALIZAÇÃO (Breadcrumbs) --- */
+    function initDynamicStorage() {
+        const container = document.getElementById('dynamicStorageContainer');
+        const hiddenInput = document.getElementById('storage_location_hidden');
+        const textInput = document.getElementById('storageInputVisual');
+
+        if (!container || !textInput) return;
+
+        let levels = [];
+
+        function renderLevels() {
+            container.querySelectorAll('.storage-tag-element').forEach(el => el.remove());
+
+            levels.forEach((lvl, index) => {
+                const badge = document.createElement('span');
+                badge.className = 'badge bg-primary text-white storage-tag-element d-flex align-items-center py-1 px-2 shadow-sm';
+                badge.innerHTML = `${lvl} <i class="bi bi-x-circle-fill ms-2" style="cursor:pointer; font-size: 0.85rem;" data-index="${index}"></i>`;
+                
+                container.insertBefore(badge, textInput);
+
+                const arrow = document.createElement('span');
+                arrow.className = 'text-muted storage-tag-element small fw-bold mx-1';
+                arrow.innerHTML = '<i class="bi bi-chevron-right"></i>';
+                container.insertBefore(arrow, textInput);
+            });
+
+            // Envia para o Django no formato limpo: "Freezer 1 > Caixa A"
+            hiddenInput.value = levels.join(" > ");
+            textInput.focus();
+        }
+
+        container.addEventListener('click', (e) => {
+            if (e.target.tagName === 'I' && e.target.hasAttribute('data-index')) {
+                levels.splice(e.target.dataset.index, 1);
+                renderLevels();
+            } else {
+                textInput.focus();
+            }
+        });
+
+        textInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' || e.key === ',') {
+                e.preventDefault();
+                const val = this.value.trim().replace(/,$/, ''); 
+                if (val) {
+                    levels.push(val);
+                    this.value = '';
+                    renderLevels();
+                }
+            } else if (e.key === 'Backspace' && this.value === '' && levels.length > 0) {
+                levels.pop();
+                renderLevels();
+            }
+        });
+    }
+
+    /* --- 5. BIOBANK DISTRIBUTION --- */
+    function initBiobankLogic() {
+        const container = document.getElementById('selectedBiobanksContainer');
+        const noMsg = document.getElementById('noBiobankMsg');
+        const searchInput = document.getElementById('biobankSearch');
+        
+        if (searchInput) {
+            searchInput.addEventListener('input', function(e) {
+                const term = e.target.value.toLowerCase();
+                document.querySelectorAll('.sheets-option').forEach(opt => {
+                    const text = opt.dataset.name.toLowerCase();
+                    opt.style.display = text.includes(term) ? 'flex' : 'none';
+                });
+            });
+        }
+
+        document.addEventListener('click', function(e) {
+            const addBtn = e.target.closest('.btn-add-bb');
+            if (addBtn) {
+                e.preventDefault(); e.stopPropagation();
+                const opt = addBtn.closest('.sheets-option');
+                const bbId = opt.dataset.value;
+                const bbName = opt.dataset.name;
+
+                if (container.querySelector(`[data-bb-id="${bbId}"]`)) return;
+                if (noMsg) noMsg.style.display = 'none';
+
+                const selectedColId = document.querySelector('select[name="collection"]')?.value || "";
+
+                const row = document.createElement('div');
+                row.className = "d-flex align-items-center justify-content-between bg-white border rounded p-3 mb-2 bb-row shadow-sm";
+                row.dataset.bbId = bbId;
+                row.innerHTML = `
+                    <div class="d-flex align-items-center flex-grow-1">
+                        <i class="bi bi-building me-3 text-primary fs-5"></i>
+                        <div class="flex-grow-1">
+                            <span class="fw-bold d-block mb-1">${bbName}</span>
+                            <input type="hidden" name="dist_biobank_id[]" value="${bbId}">
+                            <input type="hidden" name="dist_collection_id[]" value="${selectedColId}">
+                            <div class="d-flex gap-2 align-items-center">
+                                <span class="text-muted small">Qtd. Alíquotas:</span>
+                                <input type="number" name="dist_quantity[]" class="form-control form-control-sm" value="1" min="1" style="width: 80px;">
+                            </div>
+                        </div>
+                    </div>
+                    <button type="button" class="btn btn-link text-danger remove-bb ms-3"><i class="bi bi-trash fs-5"></i></button>
+                `;
+
+                container.appendChild(row);
+                
+                const dropdownBtn = document.getElementById('biobankDropdownBtn');
+                if(dropdownBtn) {
+                    const bsDropdown = bootstrap.Dropdown.getInstance(dropdownBtn) || new bootstrap.Dropdown(dropdownBtn);
+                    bsDropdown.hide();
+                }
+            }
+
+            const removeBtn = e.target.closest('.remove-bb');
+            if (removeBtn) {
+                removeBtn.closest('.bb-row').remove();
+                if (container.querySelectorAll('.bb-row').length === 0 && noMsg) noMsg.style.display = 'block';
+            }
+        });
+    }
+
+    /* --- 6. TEMPLATES DINÂMICOS (Com Tipagem Correta) --- */
+    function getFieldHTML(field) {
+        const label = field.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+        
+        if (field.includes('size_bp')) {
+            return `
+                <label class="section-label">${label}</label>
+                <input type="number" name="${field}" class="form-control form-control-sm bg-white" placeholder="Ex: 45000" min="0">
+            `;
+        }
+        if (field === 'temp_C') {
+            return `
+                <label class="section-label">${label} (°C)</label>
+                <input type="number" step="0.1" name="${field}" class="form-control form-control-sm bg-white" placeholder="Ex: 37.5">
+            `;
+        }
+        if (field === 'morphotype') {
+            return `
+                <label class="section-label">${label}</label>
+                <select name="${field}" class="form-select form-select-sm bg-white">
+                    <option value="">Selecione...</option>
+                    <option value="myovirus">Myovirus</option>
+                    <option value="siphovirus">Siphovirus</option>
+                    <option value="podovirus">Podovirus</option>
+                    <option value="outros">Outros</option>
+                </select>
+            `;
+        }
+        if (field === 'lifestyle') {
+            return `
+                <label class="section-label">${label}</label>
+                <select name="${field}" class="form-select form-select-sm bg-white">
+                    <option value="">Selecione...</option>
+                    <option value="lytic">Lytic</option>
+                    <option value="lysogenic">Lysogenic</option>
+                </select>
+            `;
+        }
+        if (field === 'genome_type') {
+            return `
+                <label class="section-label">${label}</label>
+                <select name="${field}" class="form-select form-select-sm bg-white">
+                    <option value="">Selecione...</option>
+                    <option value="dsDNA">dsDNA</option>
+                    <option value="ssDNA">ssDNA</option>
+                    <option value="dsRNA">dsRNA</option>
+                    <option value="ssRNA">ssRNA</option>
+                </select>
+            `;
+        }
+        if (field === 'vector_type') {
+            return `
+                <label class="section-label">${label}</label>
+                <select name="${field}" class="form-select form-select-sm bg-white">
+                    <option value="">Selecione...</option>
+                    <option value="expression">Expression</option>
+                    <option value="suicide">Suicide</option>
+                    <option value="conjugation">Conjugation</option>
+                    <option value="cloning">Cloning</option>
+                </select>
+            `;
+        }
+        return `
+            <label class="section-label">${label}</label>
+            <input type="text" name="${field}" class="form-control form-control-sm bg-white" placeholder="...">
+        `;
+    }
+
+    function initDynamicTemplates() {
+        const typeInput = document.getElementById('sampleTypeInput');
+        const container = document.getElementById('dynamicTemplateContainer');
+        const fieldsBox = document.getElementById('templateFields');
+        const typeNameLabel = document.getElementById('templateTypeName');
+
+        const templates = {
+            "Phage (Virus)": ["morphotype", "taxonomy", "lifestyle", "isolation_source", "genome_type", "genome_size_bp", "temp_C", "ncbi_accession"],
+            "Bacteria (Host)": ["species", "strain", "genotype", "resistance_markers"],
+            "Vector (Backbone)": ["vector_type", "induction_system", "vector_size_bp", "resistance_markers"],
+            "Construction (Plasmid)": ["construction_name", "insert_name", "insert_size_bp"]
+        };
+
+        if(typeInput && container && fieldsBox) {
+            typeInput.addEventListener('change', function() {
+                const selectedType = this.value; 
+                fieldsBox.innerHTML = ''; 
+                
+                if (templates[selectedType]) {
+                    container.classList.remove('d-none');
+                    if (typeNameLabel) typeNameLabel.innerText = selectedType;
+                    
+                    templates[selectedType].forEach(field => {
+                        const col = document.createElement('div');
+                        col.className = 'col-md-3';
+                        col.innerHTML = getFieldHTML(field);
+                        fieldsBox.appendChild(col);
+                    });
+                } else {
+                    container.classList.add('d-none');
+                }
+            });
+        }
+    }
+
+    // --- INICIALIZAÇÕES ---
     initTagSystem();
     initTagAJAX();
     initKeywordSystem();
+    initDynamicStorage();
     initBiobankLogic();
+    initDynamicTemplates();
 });

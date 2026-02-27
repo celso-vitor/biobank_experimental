@@ -3,34 +3,120 @@
 {% block title %}Editar Amostra - {{ sample.sample_id }}{% endblock %}
 
 {% block content %}
-<div class="container py-5 max-w-3xl">
+<div class="container py-5" style="max-width: 900px;">
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2 class="h3 fw-bold"><i class="fas fa-edit me-2 text-primary"></i>Editar Amostra: {{ sample.sample_id }}</h2>
-        <a href="{% url 'samples_list' %}" class="btn btn-outline-secondary"><i class="fas fa-arrow-left me-2"></i>Voltar</a>
+        <div>
+            <h2 class="h3 fw-bold mb-1"><i class="bi bi-pencil-square me-2 text-primary"></i>Editar Amostra</h2>
+            <div class="d-flex align-items-center gap-2">
+                <span class="badge bg-secondary">{{ sample.sample_id }}</span>
+                {% if form.instance.sample_type %}
+                    <span class="badge bg-info text-dark"><i class="bi bi-tag me-1"></i>{{ form.instance.sample_type }}</span>
+                {% endif %}
+            </div>
+        </div>
+        <a href="{% url 'samples_list' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-2"></i>Voltar
+        </a>
     </div>
 
-    <div class="card shadow-sm border-0">
-        <div class="card-body p-4">
-            <form method="POST">
-                {% csrf_token %}
+    <form method="POST">
+        {% csrf_token %}
+        
+        <div class="card shadow-sm border-0 mb-4">
+            <div class="card-body p-4">
                 
+                <h5 class="text-uppercase text-muted fw-bold small mb-3 border-bottom pb-2">1. Dados Gerais e Governança</h5>
                 <div class="row g-3">
-                    {% for field in form %}
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label fw-bold text-muted small text-uppercase">{{ field.label }}</label>
+                    
+                    <div class="col-md-6 mb-2">
+                        <label class="form-label fw-bold text-muted small text-uppercase">{{ form.sample_id.label }}</label>
+                        {{ form.sample_id }}
+                    </div>
+                    <div class="col-md-6 mb-2">
+                        <label class="form-label fw-bold text-muted small text-uppercase">{{ form.organism_name.label }}</label>
+                        {{ form.organism_name }}
+                    </div>
+                    
+                    <div class="col-md-4 mb-2">
+                        <label class="form-label fw-bold text-muted small text-uppercase">{{ form.sample_type.label }}</label>
+                        {{ form.sample_type }}
+                        <div class="form-text small text-warning">O tipo não pode ser alterado após o registro.</div>
+                    </div>
+                    <div class="col-md-4 mb-2">
+                        <label class="form-label fw-bold text-muted small text-uppercase">{{ form.status.label }}</label>
+                        {{ form.status }}
+                    </div>
+                    <div class="col-md-4 mb-2">
+                        <label class="form-label fw-bold text-muted small text-uppercase">{{ form.storage_location.label }}</label>
+                        {{ form.storage_location }}
+                    </div>
+
+                    <div class="col-md-6 mb-2">
+                        <label class="form-label fw-bold text-muted small text-uppercase">{{ form.biobank.label }}</label>
+                        {{ form.biobank }}
+                    </div>
+                    <div class="col-md-6 mb-2">
+                        <label class="form-label fw-bold text-muted small text-uppercase">{{ form.collection.label }}</label>
+                        {{ form.collection }}
+                    </div>
+
+                    <div class="col-12 mt-3 mb-2">
+                        <div class="form-check form-switch bg-light p-3 rounded border">
+                            {{ form.is_public }}
+                            <label class="form-check-label fw-bold ms-2" for="{{ form.is_public.id_for_label }}">
+                                {{ form.is_public.label }}
+                            </label>
+                            <div class="form-text ms-4 ps-2">Marque para permitir que pesquisadores externos visualizem os metadados.</div>
+                        </div>
+                    </div>
+
+                </div>
+
+                {% comment %} 
+                   A mágica acontece aqui: Vamos iterar sobre todos os campos do formulário.
+                   Se o campo NÃO for um dos "gerais" que já desenhamos acima, nós o imprimimos nesta caixa azul! 
+                {% endcomment %}
+                
+                {% for field in form %}
+                    {% if field.name not in "sample_id,sample_type,organism_name,status,is_public,storage_location,biobank,collection,scientific_notes" %}
+                        {% if forloop.first or forloop.counter0 == 0 %} 
+                            <div class="mt-5 p-4 bg-primary-subtle border border-primary rounded">
+                                <h5 class="text-uppercase text-primary fw-bold small mb-3 border-bottom border-primary pb-2">
+                                    <i class="bi bi-magic me-2"></i>2. Propriedades Biológicas
+                                </h5>
+                                <div class="row g-3">
+                        {% endif %}
+                        
+                        <div class="col-md-4 mb-2">
+                            <label class="form-label fw-bold text-primary-emphasis small">{{ field.label }}</label>
                             {{ field }}
                             {% if field.errors %}
                                 <div class="text-danger small mt-1">{{ field.errors }}</div>
                             {% endif %}
+                            {% if field.help_text %}
+                                <div class="form-text small">{{ field.help_text }}</div>
+                            {% endif %}
                         </div>
-                    {% endfor %}
+
+                        {% if forloop.last %}
+                                </div> </div> {% endif %}
+                    {% endif %}
+                {% endfor %}
+
+                <div class="mt-5">
+                    <h5 class="text-uppercase text-muted fw-bold small mb-3 border-bottom pb-2">3. Notas e Observações (ELN)</h5>
+                    {{ form.scientific_notes }}
                 </div>
 
-                <div class="text-end mt-4 pt-3 border-top">
-                    <button type="submit" class="btn btn-primary px-5"><i class="fas fa-save me-2"></i>Salvar Alterações</button>
-                </div>
-            </form>
+            </div>
+
+            <div class="card-footer bg-light border-top p-4 text-end">
+                <a href="{% url 'samples_list' %}" class="btn btn-white border me-2 px-4">Cancelar</a>
+                <button type="submit" class="btn btn-primary px-5 fw-bold shadow-sm">
+                    <i class="bi bi-save me-2"></i>Salvar Alterações
+                </button>
+            </div>
         </div>
-    </div>
+    </form>
 </div>
 {% endblock %}

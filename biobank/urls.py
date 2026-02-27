@@ -26,9 +26,7 @@ from core.views.internal.backup import workspace_backup_view
 from core.views.internal.profile.views import profile_view
 from core.views.internal.calendar.views import calendar_view
 
-# 4. BIOBANKS & COLLECTIONS
-from core.views.internal.biobanks.members import biobank_members_view
-from core.views.internal.collections.members import manage_collection_members
+# 4. BIOBANKS & COLLECTIONS (Removido os imports de members.py)
 
 # 5. SAMPLES (AMOSTRAS)
 from core.views.internal.samples.views import (
@@ -86,8 +84,7 @@ urlpatterns = [
     path("chemicals/add/", chemical_create_view, name="chemical_add"),
 
     # ---------------- INTERNAL: MANAGEMENT ----------------
-    path("biobanks/<int:biobank_id>/members/", biobank_members_view, name="biobank_members"),
-    path("collections/<int:collection_id>/members/", manage_collection_members, name="collection_members"),
+    # (Removido as rotas /members/ de Biobanks e Collections)
     path("tags/", tags_view, name="tags_view"),
     path("keywords/", keywords_view, name="keywords_view"),
     path("ajax/add_tag/", create_tag_ajax_view, name="ajax_add_tag"),

@@ -1,19 +1,21 @@
 from django.shortcuts import render
 from django.contrib.auth.decorators import login_required
 from core.context import base_context
-from core.models.biobanks.biobank_user_role import BiobankUserRole
-from core.models.collections.collection_user_role import CollectionUserRole
+
+# Importamos diretamente os modelos principais
+from core.models import Biobank, Collection
 
 @login_required
 def profile_view(request):
     user = request.user
     ctx = base_context(request)
 
-    # Buscar permissões
-    biobank_roles = BiobankUserRole.objects.filter(user=user).select_related('biobank')
-    collection_roles = CollectionUserRole.objects.filter(user=user).select_related('collection')
+    # Buscamos apenas os itens onde o usuário é dono (a nova lógica simplificada)
+    user_biobanks = Biobank.objects.filter(owner=user)
+    user_collections = Collection.objects.filter(owner=user)
 
-    ctx['biobank_roles'] = biobank_roles
-    ctx['collection_roles'] = collection_roles
+    # Atualizamos o contexto
+    ctx['user_biobanks'] = user_biobanks
+    ctx['user_collections'] = user_collections
     
     return render(request, "internal/profile/profile.html", ctx)
