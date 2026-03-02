@@ -103,8 +103,72 @@
                     {% endif %}
                 {% endfor %}
 
+                <div class="mt-5 mb-4">
+                    <h5 class="text-uppercase text-muted fw-bold small mb-3 border-bottom pb-2">
+                        <i class="fas fa-project-diagram me-2 text-success"></i>3. Rastreabilidade Biológica (Rede)
+                    </h5>
+                    
+                    <div class="row g-4">
+                        <div class="col-md-6">
+                            <div class="card border-0 bg-light shadow-sm h-100">
+                                <div class="card-header bg-white border-bottom fw-bold text-secondary py-3">
+                                    <i class="fas fa-arrow-down me-2 text-warning"></i>Origem (Derivada de...)
+                                </div>
+                                <div class="card-body p-0">
+                                    <ul class="list-group list-group-flush">
+                                        {% for rel in parents %}
+                                            <li class="list-group-item bg-transparent d-flex justify-content-between align-items-center p-3">
+                                                <div>
+                                                    <span class="badge bg-secondary mb-1">{{ rel.get_relationship_type_display }}</span><br>
+                                                    <a href="{% url 'sample_edit' rel.source_sample.id %}" class="fw-bold text-decoration-none">
+                                                        {{ rel.source_sample.sample_id }}
+                                                    </a>
+                                                    <small class="d-block text-muted">{{ rel.source_sample.sample_type|default:"Genérica" }}</small>
+                                                    {% if rel.notes %}<small class="text-muted fst-italic mt-1 d-block"><i class="bi bi-info-circle me-1"></i>{{ rel.notes }}</small>{% endif %}
+                                                </div>
+                                            </li>
+                                        {% empty %}
+                                            <li class="list-group-item bg-transparent text-muted small p-3 text-center">
+                                                Nenhuma origem registrada. (Amostra primária)
+                                            </li>
+                                        {% endfor %}
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <div class="card border-0 bg-light shadow-sm h-100">
+                                <div class="card-header bg-white border-bottom fw-bold text-secondary py-3">
+                                    <i class="fas fa-arrow-up me-2 text-success"></i>Destino (Gerou / Infecta...)
+                                </div>
+                                <div class="card-body p-0">
+                                    <ul class="list-group list-group-flush">
+                                        {% for rel in children %}
+                                            <li class="list-group-item bg-transparent d-flex justify-content-between align-items-center p-3">
+                                                <div>
+                                                    <span class="badge bg-success-subtle text-success border border-success-subtle mb-1">{{ rel.get_relationship_type_display }}</span><br>
+                                                    <a href="{% url 'sample_edit' rel.target_sample.id %}" class="fw-bold text-decoration-none">
+                                                        {{ rel.target_sample.sample_id }}
+                                                    </a>
+                                                    <small class="d-block text-muted">{{ rel.target_sample.sample_type|default:"Genérica" }}</small>
+                                                    {% if rel.notes %}<small class="text-muted fst-italic mt-1 d-block"><i class="bi bi-info-circle me-1"></i>{{ rel.notes }}</small>{% endif %}
+                                                </div>
+                                            </li>
+                                        {% empty %}
+                                            <li class="list-group-item bg-transparent text-muted small p-3 text-center">
+                                                Não gerou nenhuma amostra e não possui interações registradas.
+                                            </li>
+                                        {% endfor %}
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="mt-5">
-                    <h5 class="text-uppercase text-muted fw-bold small mb-3 border-bottom pb-2">3. Notas e Observações (ELN)</h5>
+                    <h5 class="text-uppercase text-muted fw-bold small mb-3 border-bottom pb-2">4. Notas e Observações (ELN)</h5>
                     {{ form.scientific_notes }}
                 </div>
 

@@ -29,7 +29,7 @@
             <div class="card-body p-4">
                 
                 <div class="mb-5">
-                    <h5 class="form-section-title">1. Identificação Básica</h5>
+                    <h5 class="form-section-title">1. Identificação Básica e Linhagem</h5>
                     <div class="row g-4">
                         <div class="col-md-3">
                             <label class="section-label">Sample ID / Barcode <span class="text-danger">*</span></label>
@@ -66,6 +66,31 @@
                                 <option value="Other">Outro</option>
                             </select>
                         </div>
+                        
+                        <div class="col-md-9 border-start border-3 border-warning ps-4">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <label class="section-label text-warning-emphasis"><i class="bi bi-diagram-2 me-1"></i>Amostra de Origem (Pai) <span class="badge bg-warning text-dark ms-1">Opcional</span></label>
+                                    <input type="text" name="parent_sample_id" list="parentSamplesList" class="form-control border-warning-subtle bg-light" placeholder="Busque pelo ID ou digite..." autocomplete="off">
+				    <datalist id="parentSamplesList">
+					{% for s in all_samples %}
+					    <option value="{{ s.sample_id }}">{{ s.organism_name|default:"Sem Organismo" }} ({{ s.sample_type|default:"Genérica" }})</option>
+					{% endfor %}
+				    </datalist>	
+                                    <div class="form-text small">Preencha se esta amostra for derivada de outra já existente no sistema.</div>
+                                </div>
+
+                                <div class="col-md-6">
+                                    <label class="section-label text-warning-emphasis">Tipo de Relação</label>
+                                    <select name="parent_relationship_type" class="form-select border-warning-subtle bg-light">
+                                        <option value="aliquot" selected>Alíquota (Cópia exata em outro tubo/freezer)</option>
+                                        <option value="passage">Passagem / Subcultivo / Repique</option>
+                                        <option value="mutated_from">Mutação / Modificação</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
                     </div>
                 </div>
 

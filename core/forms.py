@@ -48,20 +48,22 @@ class TagForm(forms.ModelForm):
 class SampleForm(forms.ModelForm):
     class Meta:
         model = Sample
+        # ATUALIZADO: 'collection' mudou para 'collections'
         fields = [
             "sample_id", "sample_type", "organism_name", 
             "status", "is_public", "storage_location",
-            "biobank", "collection", "scientific_notes"
+            "biobank", "collections", "scientific_notes"
         ]
         widgets = {
-            "sample_id": forms.TextInput(attrs={"class": "form-control", "readonly": "readonly"}), # Protegido na edição
-            "sample_type": forms.TextInput(attrs={"class": "form-control", "readonly": "readonly"}), # Protegido na edição
+            "sample_id": forms.TextInput(attrs={"class": "form-control", "readonly": "readonly"}), 
+            "sample_type": forms.TextInput(attrs={"class": "form-control", "readonly": "readonly"}),
             "organism_name": forms.TextInput(attrs={"class": "form-control"}),
             "status": forms.Select(attrs={"class": "form-select"}),
             "is_public": forms.CheckboxInput(attrs={"class": "form-check-input"}),
             "storage_location": forms.TextInput(attrs={"class": "form-control"}),
             "biobank": forms.Select(attrs={"class": "form-select"}),
-            "collection": forms.Select(attrs={"class": "form-select"}),
+            # ATUALIZADO: Alterado para SelectMultiple
+            "collections": forms.SelectMultiple(attrs={"class": "form-select"}),
             "scientific_notes": forms.Textarea(attrs={"class": "form-control", "rows": 3}),
         }
 
@@ -69,7 +71,6 @@ class SampleForm(forms.ModelForm):
 # 2. FORMULÁRIOS ESPECÍFICOS (Filhos)
 # ----------------------------------------------------------
 class BacteriaForm(SampleForm):
-    # Campo extra para transformar o array JSON em texto separado por vírgulas para o utilizador
     resistance_markers_text = forms.CharField(
         required=False, label="Marcadores de Resistência", 
         widget=forms.TextInput(attrs={"class": "form-control", "placeholder": "Ex: Ap100, Km50"})

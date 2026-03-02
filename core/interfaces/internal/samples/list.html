@@ -48,8 +48,8 @@
 {% block table_header %}
     <th class="ps-4">ID / Barcode</th>
     <th>Organismo</th>
-    <th>Tipo</th>
-    <th>Localização (Biobanco)</th>
+    <th>Tipo Biológico</th>
+    <th>Localização (Storage)</th>
     <th>Status</th>
     <th>Criado em</th>
     <th class="text-end pe-4">Ações</th>
@@ -59,24 +59,41 @@
 {% block table_body %}
     {% for sample in samples %}
     <tr>
-        <td class="ps-4 fw-bold text-primary">
+        <td class="ps-4 fw-bold text-primary align-middle">
             <a href="{% url 'sample_edit' sample.id %}" class="text-decoration-none">
                 {{ sample.sample_id }}
             </a>
         </td>
-        <td>
+        <td class="align-middle">
             {% if sample.organism_name %}
                 <span class="badge bg-light text-dark border">{{ sample.organism_name }}</span>
             {% else %}
                 <span class="text-muted small">-</span>
             {% endif %}
         </td>
-        <td>{{ sample.sample_type|default:"-" }}</td>
-        <td>
-            <small class="d-block fw-bold">{{ sample.biobank.name|default:"Sem Biobanco" }}</small>
-            <small class="text-muted">{{ sample.collection.name|default:"-" }}</small>
+        <td class="align-middle fw-medium">
+            {% if sample.sample_type == 'Bacteria (Host)' %}
+                <i class="fas fa-bacterium text-success me-2" title="Bactéria"></i>
+            {% elif sample.sample_type == 'Phage (Virus)' %}
+                <i class="fas fa-virus text-danger me-2" title="Vírus/Fago"></i>
+            {% elif sample.sample_type == 'Vector (Backbone)' %}
+                <i class="fas fa-circle-notch text-primary me-2" title="Vetor"></i>
+            {% elif sample.sample_type == 'Construction (Plasmid)' %}
+                <i class="fas fa-dna text-info me-2" title="Construção"></i>
+            {% else %}
+                <i class="fas fa-vial text-secondary me-2" title="Amostra Genérica"></i>
+            {% endif %}
+            {{ sample.sample_type|default:"Não definido" }}
         </td>
-        <td>
+        <td class="align-middle">
+            {% if sample.storage_location %}
+                <small class="d-block fw-bold text-dark"><i class="fas fa-box-open me-1 text-muted"></i>{{ sample.storage_location }}</small>
+            {% else %}
+                <small class="d-block fw-bold text-muted">Armazenamento Pendente</small>
+            {% endif %}
+            <small class="text-muted"><i class="fas fa-building me-1"></i>{{ sample.biobank.name|default:"Sem Biobanco" }}</small>
+        </td>
+        <td class="align-middle">
             {% if sample.status == 'available' %}
                 <span class="badge bg-success-subtle text-success">Disponível</span>
             {% elif sample.status == 'pending' %}
@@ -89,16 +106,35 @@
                 <span class="badge bg-secondary">{{ sample.get_status_display }}</span>
             {% endif %}
         </td>
-        <td class="small text-muted">{{ sample.created_at|date:"d/m/Y" }}</td>
-        <td class="text-end pe-4">
-            <div class="btn-group">
-                <a href="{% url 'print_sample_label' sample.id %}" target="_blank" class="btn btn-sm btn-outline-secondary" title="Imprimir QR Code">
-                    <i class="fas fa-qrcode"></i>
-                </a>
-                <a href="{% url 'sample_edit' sample.id %}" class="btn btn-sm btn-outline-primary" title="Editar">
-                    <i class="fas fa-edit"></i>
-                </a>
+        <td class="small text-muted align-middle">{{ sample.created_at|date:"d/m/Y" }}</td>
+        <td class="text-end pe-4 align-middle">
+            
+            <div class="dropdown">
+                <button class="btn btn-sm btn-light border dropdown-toggle shadow-sm" type="button" data-bs-toggle="dropdown" aria-expanded="false" data-bs-boundary="window">
+                    Opções
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0">
+                    <li>
+                        <a class="dropdown-item py-2" href="{% url 'sample_edit' sample.id %}">
+                            <i class="fas fa-edit text-primary me-2" style="width: 15px; text-align: center;"></i>Editar Amostra
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item py-2" href="{% url 'print_sample_label' sample.id %}" target="_blank">
+                            <i class="fas fa-qrcode text-secondary me-2" style="width: 15px; text-align: center;"></i>Imprimir Etiqueta
+                        </a>
+                    </li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li>
+                        <a class="dropdown-item py-2 fw-bold text-success bg-success-subtle relate-btn" href="#" 
+                           data-bs-toggle="modal" data-bs-target="#relateModal" 
+                           data-sample-id="{{ sample.id }}" data-sample-name="{{ sample.sample_id }}">
+                            <i class="fas fa-project-diagram me-2" style="width: 15px; text-align: center;"></i>Relacionar Amostras
+                        </a>
+                    </li>
+                </ul>
             </div>
+
         </td>
     </tr>
     {% empty %}
@@ -110,4 +146,80 @@
         </td>
     </tr>
     {% endfor %}
+
+    <div class="modal fade" id="relateModal" tabindex="-1" aria-labelledby="relateModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow">
+                <form id="relateForm" method="POST" action="">
+                    {% csrf_token %}
+                    <div class="modal-header bg-success text-white border-0">
+                        <h5 class="modal-title fw-bold" id="relateModalLabel">
+                            <i class="fas fa-project-diagram me-2"></i>Nova Relação: <span id="modalSourceSampleName"></span>
+                        </h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    
+                    <div class="modal-body p-4 bg-light">
+                        
+                        <div class="mb-4">
+                            <label class="form-label fw-bold text-dark">Amostra de Destino <span class="text-danger">*</span></label>
+                            <select name="target_sample_id" class="form-select border-success-subtle shadow-sm" required>
+                                <option value="" selected disabled>Selecione a amostra destino...</option>
+                                {% for s in all_samples_for_modal %}
+                                    <option value="{{ s.id }}">{{ s.sample_id }} ({{ s.sample_type|default:"Genérica" }})</option>
+                                {% endfor %}
+                            </select>
+                            <div class="form-text mt-2"><i class="fas fa-info-circle me-1"></i>Qual amostra foi gerada ou é o alvo desta interação?</div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="form-label fw-bold text-dark">Tipo de Relacionamento <span class="text-danger">*</span></label>
+                            <select name="relationship_type" class="form-select border-success-subtle shadow-sm" required>
+                                <option value="derived_from">Derivada de (Passagem / Subcultura)</option>
+                                <option value="mutated_from">Mutação de</option>
+                                <option value="assembled_from">Montada a partir de (Vetor + Inserto)</option>
+                                <option value="extracted_from">Extraída de (DNA / RNA)</option>
+                                <option value="infects">Infecta (Host-Range)</option>
+                                <option value="other">Outro Relacionamento...</option>
+                            </select>
+                        </div>
+                        
+                        <div class="mb-2">
+                            <label class="form-label fw-bold text-dark">Notas / Protocolo (Opcional)</label>
+                            <textarea name="notes" class="form-control shadow-sm" rows="3" placeholder="Detalhes do experimento, eficiência da infecção, primers usados..."></textarea>
+                        </div>
+
+                    </div>
+                    
+                    <div class="modal-footer bg-white border-top-0 pt-0">
+                        <button type="button" class="btn btn-white border px-4" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-success px-4 fw-bold shadow-sm">
+                            <i class="fas fa-link me-2"></i>Salvar Relação
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            const relateModal = document.getElementById('relateModal');
+            if (relateModal) {
+                relateModal.addEventListener('show.bs.modal', function (event) {
+                    // Descobre qual botão abriu o modal
+                    const button = event.relatedTarget;
+                    const sampleId = button.getAttribute('data-sample-id');
+                    const sampleName = button.getAttribute('data-sample-name');
+                    
+                    // Altera o título para mostrar a amostra de origem
+                    document.getElementById('modalSourceSampleName').textContent = sampleName;
+                    
+                    // Altera a rota (URL) do formulário para o ID correto
+                    const form = document.getElementById('relateForm');
+                    form.action = `/samples/${sampleId}/relate/`;
+                });
+            }
+        });
+    </script>
 {% endblock %}

@@ -35,6 +35,7 @@ from core.views.internal.samples.views import (
     sample_create_view,
     export_samples_csv,
     sample_edit_view,
+    sample_relate_view,  # <-- NOVA IMPORTAÇÃO AQUI
 )
 
 # 6. CHEMICALS (REAGENTES)
@@ -77,6 +78,7 @@ urlpatterns = [
     path("samples/add/", sample_create_view, name="sample_add"),
     path("samples/<int:sample_id>/print/", print_sample_label, name="print_sample_label"),
     path("samples/<int:sample_id>/edit/", sample_edit_view, name="sample_edit"),
+    path("samples/<int:sample_id>/relate/", sample_relate_view, name="sample_relate"),  # <-- NOVA ROTA AQUI
     path("samples/export/", export_samples_csv, name="export_samples_csv"),
 
     # ---------------- CHEMICALS (REAGENTES) ----------------

@@ -40,9 +40,11 @@ class CollectionResource(resources.ModelResource):
 class SampleResource(resources.ModelResource):
     class Meta:
         model = Sample
+        # ATUALIZADO: removido collection__name temporariamente, 
+        # pois exportar ManyToMany diretamente para CSV requer lógica extra (dehydrate).
         fields = (
             'id', 'sample_id', 'sample_type', 'organism_name', 'status', 
-            'is_public', 'collection__name', 'biobank__name', 'owner__username', 
+            'is_public', 'biobank__name', 'owner__username', 
             'scientific_notes', 'created_at'
         )
         export_order = fields
@@ -64,6 +66,7 @@ class KeywordAdmin(admin.ModelAdmin):
 
 @admin.register(KeywordValue)
 class KeywordValueAdmin(admin.ModelAdmin):
+    # ATUALIZADO: os métodos dinâmicos foram movidos para dentro da classe corretamente
     list_display = ("keyword", "value", "biobanks_list", "collections_list", "samples_list")
     list_filter = ("keyword",)
     search_fields = ("keyword__name", "value")
@@ -122,19 +125,27 @@ class CollectionAdmin(ImportExportModelAdmin):
 class SampleAdmin(ImportExportModelAdmin):     
     resource_classes = [SampleResource]        
 
+    # ATUALIZADO: 'collection' removido do list_display (Django não aceita M2M aqui) e criado método 'get_collections'
     list_display = (
         "sample_id", "show_status_color", "is_public", "owner", 
-        "sample_type", "organism_name", "collection", "created_at",
+        "sample_type", "organism_name", "get_collections", "created_at",
     )
-    list_filter = ("status", "is_public", "collection", "biobank", "is_active", "created_at")
+    # ATUALIZADO: list_filter atualizado para 'collections'
+    list_filter = ("status", "is_public", "collections", "biobank", "is_active", "created_at")
     search_fields = ("sample_id", "organism_name", "sample_type", "uuid", "owner__username", "scientific_notes")
     ordering = ("-created_at",)
     date_hierarchy = 'created_at'
     list_per_page = 20
 
     inlines = [SampleFileInline]
-    filter_horizontal = ("tags", "keywords")
+    # ATUALIZADO: Adicionado 'collections' ao filter_horizontal para facilitar a seleção múltipla
+    filter_horizontal = ("collections", "tags", "keywords")
     readonly_fields = ("uuid", "created_at", "updated_at")
+
+    @admin.display(description='Coleções')
+    def get_collections(self, obj):
+        # Cria uma string com o nome de todas as coleções às quais a amostra pertence
+        return ", ".join([c.name for c in obj.collections.all()])
 
     @admin.display(description='Status')
     def show_status_color(self, obj):
@@ -146,7 +157,8 @@ class SampleAdmin(ImportExportModelAdmin):
         return format_html('<span style="color: {}; font-weight: bold;">{}</span>', color, obj.get_status_display())
 
     def get_queryset(self, request):
-        qs = super().get_queryset(request)
+        # ATUALIZADO: prefetch_related adicionado para otimizar a listagem no banco (evita N+1 queries)
+        qs = super().get_queryset(request).prefetch_related('collections')
         if request.user.is_superuser:
             return qs
         return qs.filter(
@@ -167,14 +179,14 @@ class BacteriaAdmin(admin.ModelAdmin):
     list_display = ("sample_id", "species", "strain", "owner", "is_public")
     search_fields = ("sample_id", "species", "strain")
     list_filter = ("is_public", "status")
-    filter_horizontal = ("tags", "keywords")
+    filter_horizontal = ("collections", "tags", "keywords")
 
 @admin.register(Phage)
 class PhageAdmin(admin.ModelAdmin):
     list_display = ("sample_id", "taxonomy", "morphotype", "lifestyle", "owner")
     search_fields = ("sample_id", "taxonomy", "morphotype")
     list_filter = ("morphotype", "lifestyle", "genome_type")
-    filter_horizontal = ("tags", "keywords")
+    filter_horizontal = ("collections", "tags", "keywords")
 
 @admin.register(HostRange)
 class HostRangeAdmin(admin.ModelAdmin):
@@ -187,13 +199,13 @@ class VectorAdmin(admin.ModelAdmin):
     list_display = ("sample_id", "name_official", "vector_type", "vector_size_bp", "owner")
     search_fields = ("sample_id", "name_official", "vector_type")
     list_filter = ("vector_type",)
-    filter_horizontal = ("tags", "keywords")
+    filter_horizontal = ("collections", "tags", "keywords")
 
 @admin.register(Construction)
 class ConstructionAdmin(admin.ModelAdmin):
     list_display = ("sample_id", "construction_name", "parent_vector", "host_strain", "final_size_bp")
     search_fields = ("sample_id", "construction_name", "insert_name")
-    filter_horizontal = ("tags", "keywords")
+    filter_horizontal = ("collections", "tags", "keywords")
 
 # ============================================================
 # OUTROS
