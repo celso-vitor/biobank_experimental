@@ -25,10 +25,10 @@ class BiobankForm(forms.ModelForm):
 class CollectionForm(forms.ModelForm):
     class Meta:
         model = Collection
-        fields = ["name", "biobank", "description", "is_public"]
+        # REMOVIDO "biobank" daqui
+        fields = ["name", "description", "is_public"]
         widgets = {
             "name": forms.TextInput(attrs={"class": "form-control", "placeholder": "Collection name"}),
-            "biobank": forms.Select(attrs={"class": "form-select"}),
             "is_public": forms.CheckboxInput(attrs={"class": "form-check-input"}),
             "description": forms.Textarea(attrs={"class": "form-control", "rows": 4}),
         }

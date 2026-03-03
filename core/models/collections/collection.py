@@ -2,15 +2,15 @@ from django.db import models
 from django.contrib.auth.models import User
 
 # Imports atualizados para a nova hierarquia de diretórios
-from core.models.biobanks.biobank import Biobank
 from core.models.tags import Tag
 from core.models.keywords import KeywordValue
 
 class Collection(models.Model):
     """
-    Coleção científica pertencente a um Biobank.
+    Coleção científica independente.
     Controla acesso, visibilidade e governança de amostras.
-    No contexto do CEPID B3, agrupa linhagens por projeto ou laboratório.
+    No contexto do CEPID B3, agrupa linhagens por projeto ou laboratório,
+    podendo conter amostras de MÚLTIPLOS biobancos físicos.
     """
 
     # =========================
@@ -23,11 +23,7 @@ class Collection(models.Model):
         help_text="Finalidade científica da coleção"
     )
 
-    biobank = models.ForeignKey(
-        Biobank,
-        on_delete=models.CASCADE,
-        related_name="collections",
-    )
+    # REMOVIDO: biobank = models.ForeignKey(...)
 
     # =========================
     # GOVERNANÇA / PERMISSÕES
@@ -74,4 +70,4 @@ class Collection(models.Model):
     # REPRESENTAÇÃO
     # =========================
     def __str__(self):
-        return f"{self.name} ({self.biobank.name})"
+        return self.name

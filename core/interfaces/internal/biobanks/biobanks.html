@@ -7,7 +7,7 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 
 <style>
-    /* === ESTILO HARMÔNICO === */
+    /* === HARMONIZED STYLE === */
     .form-section-title {
         font-size: 0.85rem;
         font-weight: 700;
@@ -27,7 +27,7 @@
         display: block; 
     }
 
-    /* Mapa */
+    /* Map */
     #map { 
         cursor: crosshair; 
         z-index: 1; 
@@ -59,7 +59,7 @@
         border-color: #0d6efd !important; 
     }
 
-    /* Botão Mini */
+    /* Mini Button */
     .btn-manage-mini { 
         font-size: 0.7rem; 
         padding: 4px 10px; 
@@ -253,9 +253,14 @@
                             {% endif %}
                         </td>
                         <td class="text-end pe-4">
-                            <button class="btn btn-sm btn-light text-muted border-0" disabled>
-                                <i class="bi bi-gear"></i>
-                            </button>
+                            <form method="POST" action="{% url 'workspace' %}?page=biobanks" class="d-inline" onsubmit="return confirm('Are you sure you want to deactivate this biobank?');">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="deactivate_biobank">
+                                <input type="hidden" name="biobank_id" value="{{ biobank.id }}">
+                                <button type="submit" class="btn btn-sm btn-outline-danger border-0" title="Deactivate">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </form>
                         </td>
                     </tr>
                     {% empty %}
@@ -282,7 +287,7 @@
 document.addEventListener("DOMContentLoaded", () => {
     
     // =========================================================
-    // 1. MAPA, GEOCODING & REVERSE GEOCODING
+    // 1. MAP, GEOCODING & REVERSE GEOCODING
     // =========================================================
     if(document.getElementById('map')) {
         var map = L.map('map').setView([-14.2350, -51.9253], 3); 
@@ -298,7 +303,6 @@ document.addEventListener("DOMContentLoaded", () => {
         var statusLabel = document.getElementById('searchStatus');
         var searchTimeout = null;
 
-        // --- FUNÇÃO PARA BUSCAR ENDEREÇO (REVERSE GEOCODE) ---
         function getAddressFromCoords(lat, lng) {
             addressInput.placeholder = "Loading address...";
             statusLabel.textContent = "Fetching address...";
@@ -380,7 +384,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 
     // =========================================================
-    // 2. TAGS (Seleção Visual)
+    // 2. TAGS (Visual Selection)
     // =========================================================
     const hiddenTagContainer = document.getElementById("tagHiddenInputs");
     
@@ -402,7 +406,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     // =========================================================
-    // 3. KEYWORDS (Modal AJAX)
+    // 3. KEYWORDS (AJAX Modal)
     // =========================================================
     const btnSaveKw = document.getElementById("btnSaveKeywordAJAX");
     if(btnSaveKw) {

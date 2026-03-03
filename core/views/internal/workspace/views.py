@@ -13,7 +13,7 @@ from core.models.collections.collection import Collection
 from core.models.samples.sample import Sample
 from core.models.events.model import Event
 
-# Imports de Views (Mantidos para o roteamento)
+# View Imports for Routing
 from core.views.internal.biobanks.views import biobanks_view
 from core.views.internal.collections.views import collections_view
 from core.views.internal.samples.views import samples_list_view
@@ -26,6 +26,10 @@ from core.views.internal.keywords.views import (
 
 @login_required
 def home(request):
+    """
+    Main router for the LIMS internal area. 
+    It dispatches requests based on the 'page' parameter.
+    """
     page = request.GET.get("page", "workspace")
 
     ROUTES = {
@@ -43,43 +47,56 @@ def home(request):
         "delete_keyword": delete_keyword_view,
     }
 
+    # If the page doesn't exist in ROUTES, default to workspace_view
     view_func = ROUTES.get(page, workspace_view)
+    
+    # We call the specific view function passing the request
     return view_func(request)
 
 def workspace_view(request):
+    """
+    Dashboard logic: KPIs, charts, and recent activities.
+    """
     ctx = base_context(request)
-    user = request.user
-
+    
     # --- 1. KPI COUNTERS ---
-    # Total Active Samples
     total_samples = Sample.objects.filter(is_active=True).count()
     
-    # Samples Pending QC (Quality Control) or Validation
-    pending_qc = Sample.objects.filter(is_active=True, status__in=['pending', 'qc']).count()
+    # Samples in Quality Control or Pending
+    pending_qc = Sample.objects.filter(
+        is_active=True, 
+        status__in=['pending', 'qc']
+    ).count()
     
-    # Samples created in the last 30 days
+    # New samples in the last 30 days
     last_30_days = timezone.now() - timedelta(days=30)
-    new_samples = Sample.objects.filter(is_active=True, created_at__gte=last_30_days).count()
+    new_samples = Sample.objects.filter(
+        is_active=True, 
+        created_at__gte=last_30_days
+    ).count()
 
-    # Total Collections
     total_collections = Collection.objects.filter(is_active=True).count()
 
     # --- 2. CHART DATA (Distribution by Sample Type) ---
-    # Agrupa amostras por tipo e conta. Ex: [{'sample_type': 'DNA', 'total': 10}, ...]
     type_distribution = (
         Sample.objects.filter(is_active=True)
         .values('sample_type')
         .annotate(total=Count('id'))
-        .order_by('-total')[:5] # Top 5 types
+        .order_by('-total')[:5]
     )
     
-    # Prepare data for Chart.js
-    chart_labels = [item['sample_type'] or 'Unspecified' for item in type_distribution]
+    chart_labels = [item['sample_type'] or 'Other' for item in type_distribution]
     chart_data = [item['total'] for item in type_distribution]
 
-    # --- 3. RECENT ACTIVITY ---
-    recent_activity = Event.objects.all().select_related('performed_by', 'sample').order_by("-timestamp")[:6]
+    # --- 3. RECENT ACTIVITY (Audit Trail) ---
+    # Fetch latest events recorded in the system
+    recent_activity = (
+        Event.objects.all()
+        .select_related('performed_by', 'sample')
+        .order_by("-timestamp")[:8]
+    )
 
+    # --- 4. CONTEXT UPDATE ---
     ctx["stats"] = {
         "total_samples": total_samples,
         "pending_qc": pending_qc,

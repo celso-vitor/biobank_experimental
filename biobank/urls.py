@@ -1,3 +1,4 @@
+# core/urls.py
 from django.contrib import admin
 from django.urls import path
 from django.conf import settings
@@ -26,7 +27,8 @@ from core.views.internal.backup import workspace_backup_view
 from core.views.internal.profile.views import profile_view
 from core.views.internal.calendar.views import calendar_view
 
-# 4. BIOBANKS & COLLECTIONS (Removido os imports de members.py)
+# 4. BIOBANKS & COLLECTIONS (Gestão de Acervos)
+# Nota: Rotas de membros foram movidas para o Admin ou Views dedicadas
 
 # 5. SAMPLES (AMOSTRAS)
 from core.views.internal.samples.views import (
@@ -35,7 +37,7 @@ from core.views.internal.samples.views import (
     sample_create_view,
     export_samples_csv,
     sample_edit_view,
-    sample_relate_view,  # <-- NOVA IMPORTAÇÃO AQUI
+    sample_relate_view,  # Função que processa o Novo Modal Múltiplo
 )
 
 # 6. CHEMICALS (REAGENTES)
@@ -78,7 +80,10 @@ urlpatterns = [
     path("samples/add/", sample_create_view, name="sample_add"),
     path("samples/<int:sample_id>/print/", print_sample_label, name="print_sample_label"),
     path("samples/<int:sample_id>/edit/", sample_edit_view, name="sample_edit"),
-    path("samples/<int:sample_id>/relate/", sample_relate_view, name="sample_relate"),  # <-- NOVA ROTA AQUI
+    
+    # Rota Vital: Processa as conexões (In/Out) e Host-Range vindas do modal
+    path("samples/<int:sample_id>/relate/", sample_relate_view, name="sample_relate"),
+    
     path("samples/export/", export_samples_csv, name="export_samples_csv"),
 
     # ---------------- CHEMICALS (REAGENTES) ----------------
@@ -86,7 +91,6 @@ urlpatterns = [
     path("chemicals/add/", chemical_create_view, name="chemical_add"),
 
     # ---------------- INTERNAL: MANAGEMENT ----------------
-    # (Removido as rotas /members/ de Biobanks e Collections)
     path("tags/", tags_view, name="tags_view"),
     path("keywords/", keywords_view, name="keywords_view"),
     path("ajax/add_tag/", create_tag_ajax_view, name="ajax_add_tag"),
@@ -100,6 +104,7 @@ urlpatterns = [
     path('internal/lab-tools/plasmid/', plasmid_views.plasmid_editor, name='plasmid_editor'),
 ]
 
+# Configuração para arquivos de mídia e estáticos em desenvolvimento
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
     urlpatterns += staticfiles_urlpatterns()

@@ -1,6 +1,12 @@
 {% extends "internal/common/base.html" %}
+{% load static %}
 
 {% block title %}Editar Amostra - {{ sample.sample_id }}{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'internal/samples/samples.css' %}">
+<link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
+{% endblock %}
 
 {% block content %}
 <div class="container py-5" style="max-width: 900px;">
@@ -19,8 +25,10 @@
         </a>
     </div>
 
-    <form method="POST">
+    <form method="POST" enctype="multipart/form-data" id="mainSampleForm">
         {% csrf_token %}
+        
+        <input type="hidden" name="scientific_notes" id="scientific_notes_input" value="{{ sample.scientific_notes|default:'' }}">
         
         <div class="card shadow-sm border-0 mb-4">
             <div class="card-body p-4">
@@ -40,15 +48,20 @@
                     <div class="col-md-4 mb-2">
                         <label class="form-label fw-bold text-muted small text-uppercase">{{ form.sample_type.label }}</label>
                         {{ form.sample_type }}
-                        <div class="form-text small text-warning">O tipo não pode ser alterado após o registro.</div>
+                        <div class="form-text small text-warning">O tipo não pode ser alterado.</div>
                     </div>
                     <div class="col-md-4 mb-2">
                         <label class="form-label fw-bold text-muted small text-uppercase">{{ form.status.label }}</label>
                         {{ form.status }}
                     </div>
+                    
                     <div class="col-md-4 mb-2">
-                        <label class="form-label fw-bold text-muted small text-uppercase">{{ form.storage_location.label }}</label>
-                        {{ form.storage_location }}
+                        <label class="form-label fw-bold text-muted small text-uppercase">Localização Física</label>
+                        <div id="dynamicStorageContainer" class="form-control d-flex flex-wrap align-items-center gap-1 bg-light" style="min-height: 38px; cursor: text;">
+                            <input type="hidden" name="storage_location" id="storage_location_hidden" value="{{ sample.storage_location|default:'' }}">
+                            <input type="text" id="storageInputVisual" class="border-0 p-0 m-0 bg-transparent" style="outline: none; flex-grow: 1; min-width: 150px;" placeholder="Adicionar nível e teclar Enter...">
+                        </div>
+                        <div class="form-text small" style="font-size: 0.70rem;">(Ex: Freezer 1 ↵ Caixa A ↵)</div>
                     </div>
 
                     <div class="col-md-6 mb-2">
@@ -56,8 +69,8 @@
                         {{ form.biobank }}
                     </div>
                     <div class="col-md-6 mb-2">
-                        <label class="form-label fw-bold text-muted small text-uppercase">{{ form.collection.label }}</label>
-                        {{ form.collection }}
+                        <label class="form-label fw-bold text-muted small text-uppercase">{{ form.collections.label }}</label>
+                        {{ form.collections }}
                     </div>
 
                     <div class="col-12 mt-3 mb-2">
@@ -72,13 +85,9 @@
 
                 </div>
 
-                {% comment %} 
-                   A mágica acontece aqui: Vamos iterar sobre todos os campos do formulário.
-                   Se o campo NÃO for um dos "gerais" que já desenhamos acima, nós o imprimimos nesta caixa azul! 
-                {% endcomment %}
-                
+                {% comment %} Campos Biológicos Dinâmicos {% endcomment %}
                 {% for field in form %}
-                    {% if field.name not in "sample_id,sample_type,organism_name,status,is_public,storage_location,biobank,collection,scientific_notes" %}
+                    {% if field.name not in "sample_id,sample_type,organism_name,status,is_public,storage_location,biobank,collections,scientific_notes" %}
                         {% if forloop.first or forloop.counter0 == 0 %} 
                             <div class="mt-5 p-4 bg-primary-subtle border border-primary rounded">
                                 <h5 class="text-uppercase text-primary fw-bold small mb-3 border-bottom border-primary pb-2">
@@ -99,7 +108,8 @@
                         </div>
 
                         {% if forloop.last %}
-                                </div> </div> {% endif %}
+                                </div> </div> 
+                        {% endif %}
                     {% endif %}
                 {% endfor %}
 
@@ -112,7 +122,7 @@
                         <div class="col-md-6">
                             <div class="card border-0 bg-light shadow-sm h-100">
                                 <div class="card-header bg-white border-bottom fw-bold text-secondary py-3">
-                                    <i class="fas fa-arrow-down me-2 text-warning"></i>Origem (Derivada de...)
+                                    <i class="bi bi-arrow-up-right me-2 text-warning"></i>Origem (Derivada de...)
                                 </div>
                                 <div class="card-body p-0">
                                     <ul class="list-group list-group-flush">
@@ -140,7 +150,7 @@
                         <div class="col-md-6">
                             <div class="card border-0 bg-light shadow-sm h-100">
                                 <div class="card-header bg-white border-bottom fw-bold text-secondary py-3">
-                                    <i class="fas fa-arrow-up me-2 text-success"></i>Destino (Gerou / Infecta...)
+                                    <i class="bi bi-arrow-return-right me-2 text-success"></i>Destino (Gerou / Infecta...)
                                 </div>
                                 <div class="card-body p-0">
                                     <ul class="list-group list-group-flush">
@@ -167,9 +177,51 @@
                     </div>
                 </div>
 
+                <div class="mt-5 mb-4">
+                    <h5 class="text-uppercase text-muted fw-bold small mb-3 border-bottom pb-2">4. Notas Científicas (ELN)</h5>
+                    <div id="eln-editor" class="bg-white" style="height: 250px;">{{ sample.scientific_notes|safe }}</div>
+                </div>
+
                 <div class="mt-5">
-                    <h5 class="text-uppercase text-muted fw-bold small mb-3 border-bottom pb-2">4. Notas e Observações (ELN)</h5>
-                    {{ form.scientific_notes }}
+                    <h5 class="text-uppercase text-muted fw-bold small mb-3 border-bottom pb-2">5. Arquivos e Anexos</h5>
+                    <div class="row g-4">
+                        
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold text-muted small text-uppercase">Arquivos Salvos</label>
+                            {% if sample_files %}
+                            <ul class="list-group list-group-flush border rounded shadow-sm">
+                                {% for anexo in sample_files %}
+                                <li class="list-group-item bg-light">
+                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                        <span class="fw-bold text-primary small">
+                                            <i class="bi bi-file-earmark-text me-1"></i>
+                                            {{ anexo.category }} 
+                                        </span>
+                                        <a href="{{ anexo.file.url }}" target="_blank" class="btn btn-sm btn-outline-primary py-0 px-2" style="font-size: 0.75rem;">Download</a>
+                                    </div>
+                                    <div class="text-truncate small fw-bold" title="{{ anexo.file.name }}">{{ anexo.file.name|slice:"15:" }}...</div>
+                                    <div class="small text-muted fst-italic mt-1">{{ anexo.description|default:"Sem descrição." }}</div>
+                                </li>
+                                {% endfor %}
+                            </ul>
+                            {% else %}
+                                <div class="p-3 bg-light rounded text-center border text-muted small">
+                                    Nenhum arquivo anexado nesta amostra.
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="col-md-6">
+                            <div class="p-3 border rounded bg-light h-100">
+                                <label class="form-label fw-bold text-muted small text-uppercase mb-3"><i class="bi bi-cloud-arrow-up me-1"></i> Adicionar Novos Arquivos</label>
+                                <div id="fileContainer" class="d-flex flex-column gap-3 mb-3 mt-2"></div>
+                                <button type="button" id="addFileBtn" class="btn btn-sm w-100 btn-outline-secondary bg-white border-dashed shadow-sm">
+                                    <i class="bi bi-plus me-1"></i>Adicionar Arquivo
+                                </button>
+                            </div>
+                        </div>
+
+                    </div>
                 </div>
 
             </div>
@@ -183,4 +235,47 @@
         </div>
     </form>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
+<script src="{% static 'internal/samples/samples.js' %}"></script>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const addFileBtn = document.getElementById("addFileBtn");
+        const fileContainer = document.getElementById("fileContainer");
+
+        if (addFileBtn && fileContainer) {
+            addFileBtn.addEventListener("click", function() {
+                const row = document.createElement("div");
+                row.className = "border p-2 rounded bg-white position-relative shadow-sm";
+                row.innerHTML = `
+                    <button type="button" class="btn-close position-absolute top-0 end-0 m-2" style="font-size: 0.6rem;" onclick="this.parentElement.remove()"></button>
+                    <div class="mb-2 pe-4">
+                        <label class="small fw-bold text-muted">Arquivo <span class="text-danger">*</span></label>
+                        <input type="file" name="file" class="form-control form-control-sm" required>
+                    </div>
+                    <div class="row g-2">
+                        <div class="col-md-5">
+                            <label class="small fw-bold text-muted">Categoria</label>
+                            <select name="file_category" class="form-select form-select-sm">
+                                <option value="Sequence">Fasta/Sequence</option>
+                                <option value="Protocol">Protocolo</option>
+                                <option value="Image">Imagem/Gel</option>
+                                <option value="Report">Relatório</option>
+                                <option value="Other" selected>Outro</option>
+                            </select>
+                        </div>
+                        <div class="col-md-7">
+                            <label class="small fw-bold text-muted">Descrição</label>
+                            <input type="text" name="file_description" class="form-control form-control-sm" placeholder="Ex: Resultado do Gel...">
+                        </div>
+                    </div>
+                `;
+                fileContainer.appendChild(row);
+            });
+        }
+    });
+</script>
 {% endblock %}

@@ -2,6 +2,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.db import transaction
 from django.core.exceptions import PermissionDenied
+from django.contrib.auth.decorators import login_required
 
 from core.context import base_context
 from core.forms import BiobankForm
@@ -11,12 +12,13 @@ from core.models.tags.model import Tag
 from core.models.keywords.model import Keyword, KeywordValue
 from core.permissions.biobanks import can_view_biobank, can_edit_biobank
 
+@login_required
 def biobanks_view(request):
     user = request.user
     action = request.POST.get("action")
 
+    # 1. ACTION: ADD BIOBANK
     if request.method == "POST" and action == "add_biobank":
-        if not user.is_authenticated: raise PermissionDenied
         form = BiobankForm(request.POST)
         if not form.is_valid():
             messages.error(request, "Invalid biobank data.")
@@ -45,26 +47,42 @@ def biobanks_view(request):
             messages.error(request, f"Error creating biobank: {e}")
         return redirect("/?page=biobanks")
 
+    # 2. ACTION: DEACTIVATE BIOBANK (Fixed the 'biobank_id' mismatch)
     if request.method == "POST" and action == "deactivate_biobank":
-        biobank = get_object_or_404(Biobank, id=request.POST.get("id"))
-        if not can_edit_biobank(user, biobank): raise PermissionDenied
+        # Capturamos o biobank_id enviado pelo HTML
+        bb_id = request.POST.get("biobank_id")
+        biobank = get_object_or_404(Biobank, id=bb_id)
+        
+        if not can_edit_biobank(user, biobank):
+            raise PermissionDenied
+            
         biobank.is_active = False
         biobank.save(update_fields=["is_active"])
         messages.success(request, "Biobank deactivated successfully.")
         return redirect("/?page=biobanks")
 
+    # 3. ACTION: PERMANENT DELETE (Administrative only)
     if request.method == "POST" and action == "delete_biobank":
-        if not (user.is_superuser or user.is_staff): raise PermissionDenied
-        biobank = get_object_or_404(Biobank, id=request.POST.get("id"))
+        if not (user.is_superuser or user.is_staff):
+            raise PermissionDenied
+            
+        bb_id = request.POST.get("biobank_id")
+        biobank = get_object_or_404(Biobank, id=bb_id)
         biobank.delete()
         messages.success(request, "Biobank permanently deleted.")
         return redirect("/?page=biobanks")
 
+    # 4. VIEW LOGIC (GET)
     ctx = base_context(request)
     ctx["biobank_form"] = BiobankForm()
     ctx["all_tags"] = Tag.objects.all().order_by("name")
 
-    visible_biobanks = [b for b in Biobank.objects.filter(is_active=True).order_by("name") if can_view_biobank(user, b)]
+    # Filter biobanks that the user is allowed to see
+    # Only show active biobanks in the general listing
+    visible_biobanks = [
+        b for b in Biobank.objects.filter(is_active=True).order_by("name") 
+        if can_view_biobank(user, b)
+    ]
 
     for b in visible_biobanks:
         b.can_edit = can_edit_biobank(user, b)

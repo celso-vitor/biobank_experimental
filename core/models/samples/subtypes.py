@@ -45,8 +45,8 @@ class Phage(Sample):
     genome_size_bp = models.PositiveIntegerField(blank=True, null=True, help_text="Tamanho em pares de bases")
     ncbi_accession = models.CharField(max_length=100, blank=True, null=True, help_text="Link/ID do GenBank")
     temp_C = models.DecimalField(max_digits=4, decimal_places=1, blank=True, null=True, help_text="Temperatura ideal de crescimento")
-    morphology_img = models.ImageField(upload_to='phage_img/', blank=True, null=True)
-    genome_sequence = models.FileField(upload_to='phage_genomes/', blank=True, null=True)
+
+    # Arquivos movidos para o sistema genérico SampleFile!
 
     class Meta:
         verbose_name = "Phage"
@@ -59,6 +59,8 @@ class HostRange(models.Model):
     bacteria = models.ForeignKey(Bacteria, on_delete=models.CASCADE, related_name='phage_interactions')
     is_isolation_host = models.BooleanField(default=False, help_text="Define se esta é a bactéria mãe do isolamento")
     efficiency_eop = models.FloatField(blank=True, null=True, validators=[MinValueValidator(0.0)])
+    
+    # Faz sentido manter aqui, pois a imagem da placa pertence à *interação* e não apenas ao fago!
     plaque_morphology = models.ImageField(upload_to='plaque_images/', blank=True, null=True)
 
     class Meta:
@@ -81,8 +83,9 @@ class Vector(Sample):
     vector_type = models.CharField(max_length=50, choices=VECTOR_TYPE_CHOICES, blank=True, null=True)
     resistance_markers = models.JSONField(default=list, blank=True)
     induction_system = models.CharField(max_length=100, blank=True, null=True, help_text="Ex: T7, lac, araBAD")
-    default_host = models.ForeignKey(Bacteria, on_delete=models.SET_NULL, null=True, blank=True, related_name='default_vectors')
     vector_size_bp = models.PositiveIntegerField(blank=True, null=True)
+
+    # Relação default_host movida para a rede de Rastreabilidade (SampleRelationship)
 
     class Meta:
         verbose_name = "Vector"
@@ -96,16 +99,16 @@ class Construction(Sample):
     insert_name = models.CharField(max_length=100, blank=True, null=True, help_text="Nome do gene/peça inserida. Ex: eGFP")
     insert_size_bp = models.PositiveIntegerField(default=0)
     actual_resistances = models.JSONField(default=list, blank=True, help_text="Resistências da construção final")
-    host_strain = models.ForeignKey(Bacteria, on_delete=models.SET_NULL, null=True, blank=True, related_name='hosted_constructions')
-    map_file = models.FileField(upload_to='construction_maps/', blank=True, null=True)
-    sequence_file = models.FileField(upload_to='construction_seqs/', blank=True, null=True)
     origin_lab = models.CharField(max_length=150, blank=True, null=True)
+    
+    # Campo físico para permitir filtros rápidos no banco de dados (Ex: order by tamanho)
+    final_size_bp = models.PositiveIntegerField(blank=True, null=True, help_text="Calculado automaticamente")
 
-    @property
-    def final_size_bp(self):
-        v_size = self.parent_vector.vector_size_bp or 0
-        i_size = self.insert_size_bp or 0
-        return v_size + i_size
+    def save(self, *args, **kwargs):
+        v_size = self.parent_vector.vector_size_bp if self.parent_vector and self.parent_vector.vector_size_bp else 0
+        i_size = self.insert_size_bp if self.insert_size_bp else 0
+        self.final_size_bp = v_size + i_size
+        super().save(*args, **kwargs)
 
     class Meta:
         verbose_name = "Construction"
