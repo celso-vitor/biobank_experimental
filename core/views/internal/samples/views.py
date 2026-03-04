@@ -79,12 +79,35 @@ def sample_create_view(request):
             try:
                 sample_id_base = request.POST.get("sample_id")
                 sample_type = request.POST.get("sample_type")
-                organism_name = request.POST.get("organism_name")
                 scientific_notes = request.POST.get("scientific_notes") 
                 storage_location = request.POST.get("storage_location", "")
-
                 is_public = request.POST.get("is_public") == "true" or request.POST.get("is_public") == "on"
                 
+                # --- NEW: Dynamic assembly of organism_name ---
+                if sample_type == "Bacteria (Host)":
+                    genus = request.POST.get("genus", "").strip()
+                    species = request.POST.get("species", "").strip()
+                    strain = request.POST.get("strain", "").strip()
+                    organism_name = f"{genus} {species} {strain}".strip()
+                    
+                elif sample_type == "Phage (Virus)":
+                    genus = request.POST.get("genus", "").strip()
+                    taxonomy = request.POST.get("taxonomy", "").strip()
+                    organism_name = f"{genus} {taxonomy}".strip()
+                    
+                elif sample_type == "Vector (Backbone)":
+                    organism_name = request.POST.get("name_official", "").strip()
+                    
+                elif sample_type == "Construction (Plasmid)":
+                    organism_name = request.POST.get("construction_name", "").strip()
+                    
+                elif sample_type == "Other":
+                    # Correctly capture the custom organism name for 'Other' type
+                    organism_name = request.POST.get("custom_organism_name", "Unknown Sample").strip()
+                else:
+                    organism_name = "Undefined"
+                # -------------------------------------------------
+
                 collection_id = request.POST.get("collection")
                 collection_obj = Collection.objects.filter(id=collection_id).first() if collection_id else None
 
@@ -122,7 +145,7 @@ def sample_create_view(request):
 
                             base_data = {
                                 "sample_id": final_id,
-                                "organism_name": organism_name,
+                                "organism_name": organism_name, # Uses the dynamically created name
                                 "sample_type": sample_type,
                                 "biobank": biobank,
                                 "scientific_notes": scientific_notes,
@@ -138,7 +161,8 @@ def sample_create_view(request):
                                 r_list = [r.strip() for r in r_markers.split(",") if r.strip()]
                                 sample = Bacteria.objects.create(
                                     **base_data,
-                                    species=request.POST.get("species", organism_name),
+                                    genus=request.POST.get("genus", ""), # Added Genus
+                                    species=request.POST.get("species", ""),
                                     strain=request.POST.get("strain", ""),
                                     genotype=request.POST.get("genotype", ""),
                                     resistance_markers=r_list
@@ -147,6 +171,7 @@ def sample_create_view(request):
                             elif sample_type == "Phage (Virus)":
                                 sample = Phage.objects.create(
                                     **base_data,
+                                    genus=request.POST.get("genus", ""), # Added Genus
                                     morphotype=request.POST.get("morphotype"),
                                     taxonomy=request.POST.get("taxonomy"),
                                     lifestyle=request.POST.get("lifestyle"),
@@ -162,7 +187,7 @@ def sample_create_view(request):
                                 r_list = [r.strip() for r in r_markers.split(",") if r.strip()]
                                 sample = Vector.objects.create(
                                     **base_data,
-                                    name_official=request.POST.get("name_official", organism_name),
+                                    name_official=request.POST.get("name_official", ""),
                                     vector_type=request.POST.get("vector_type"),
                                     induction_system=request.POST.get("induction_system"),
                                     vector_size_bp=request.POST.get("vector_size_bp") or None,
@@ -175,7 +200,7 @@ def sample_create_view(request):
                                 sample = Construction.objects.create(
                                     **base_data,
                                     parent_vector=p_vector,
-                                    construction_name=request.POST.get("construction_name", organism_name),
+                                    construction_name=request.POST.get("construction_name", ""),
                                     insert_name=request.POST.get("insert_name", ""),
                                     insert_size_bp=request.POST.get("insert_size_bp") or 0
                                 )
@@ -183,7 +208,7 @@ def sample_create_view(request):
                             else:
                                 sample = Sample.objects.create(**base_data)
                             
-                            # CORRECT PLURAL ADDITION FOR M2M
+                            # M2M relationship addition
                             if collection_obj:
                                 sample.collections.add(collection_obj)
 
@@ -300,8 +325,8 @@ def export_samples_csv(request):
     headers = [
         'ID / Barcode', 'Biological Type', 'Organism', 'Status', 'Visibility', 
         'Collections', 'Biobank', 'Storage Location', 'Owner', 'Created At',
-        'Phage: Morphotype', 'Phage: Taxonomy', 'Phage: Lifestyle', 'Genome (Type)', 'Genome Size (bp)',
-        'Bacteria: Species', 'Bacteria: Strain', 'Genotype', 'Resistance Markers',
+        'Phage: Genus', 'Phage: Morphotype', 'Phage: Taxonomy', 'Phage: Lifestyle', 'Genome (Type)', 'Genome Size (bp)',
+        'Bacteria: Genus', 'Bacteria: Species', 'Bacteria: Strain', 'Genotype', 'Resistance Markers',
         'Construction: Parent Vector', 'Construction: Insert', 'Insert Size (bp)'
     ]
     writer.writerow(headers)
@@ -320,11 +345,12 @@ def export_samples_csv(request):
             s.owner.username, s.created_at.strftime('%Y-%m-%d %H:%M')
         ]
         
-        morphotype = taxonomy = lifestyle = genome_type = genome_size = ""
-        species = strain = genotype = resistance = ""
+        p_genus = morphotype = taxonomy = lifestyle = genome_type = genome_size = ""
+        b_genus = species = strain = genotype = resistance = ""
         parent_vector = insert_name = insert_size = ""
 
         if hasattr(s, 'phage'):
+            p_genus = s.phage.genus or ""
             morphotype = s.phage.morphotype or ""
             taxonomy = s.phage.taxonomy or ""
             lifestyle = s.phage.lifestyle or ""
@@ -332,6 +358,7 @@ def export_samples_csv(request):
             genome_size = s.phage.genome_size_bp or ""
             
         elif hasattr(s, 'bacteria'):
+            b_genus = s.bacteria.genus or ""
             species = s.bacteria.species or ""
             strain = s.bacteria.strain or ""
             genotype = s.bacteria.genotype or ""
@@ -346,8 +373,8 @@ def export_samples_csv(request):
             insert_size = s.construction.insert_size_bp or ""
 
         row.extend([
-            morphotype, taxonomy, lifestyle, genome_type, genome_size,
-            species, strain, genotype, resistance,
+            p_genus, morphotype, taxonomy, lifestyle, genome_type, genome_size,
+            b_genus, species, strain, genotype, resistance,
             parent_vector, insert_name, insert_size
         ])
         

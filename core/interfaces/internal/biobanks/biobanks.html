@@ -285,6 +285,22 @@
 
 <script>
 document.addEventListener("DOMContentLoaded", () => {
+
+    // =========================================================
+    // PREVENIR ENVIO DO FORMULÁRIO COM 'ENTER'
+    // =========================================================
+    const biobankForm = document.getElementById("biobankForm");
+    if (biobankForm) {
+        biobankForm.addEventListener("keydown", function(event) {
+            // Se a tecla for Enter
+            if (event.key === "Enter") {
+                // E o elemento focado não for um <textarea> (descrição) nem um <button>
+                if (event.target.tagName !== "TEXTAREA" && event.target.tagName !== "BUTTON") {
+                    event.preventDefault(); // Cancela o envio do formulário
+                }
+            }
+        });
+    }
     
     // =========================================================
     // 1. MAP, GEOCODING & REVERSE GEOCODING

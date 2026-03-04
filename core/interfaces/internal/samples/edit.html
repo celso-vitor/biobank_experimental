@@ -1,7 +1,7 @@
 {% extends "internal/common/base.html" %}
 {% load static %}
 
-{% block title %}Editar Amostra - {{ sample.sample_id }}{% endblock %}
+{% block title %}Edit Sample - {{ sample.sample_id }}{% endblock %}
 
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'internal/samples/samples.css' %}">
@@ -12,16 +12,17 @@
 <div class="container py-5" style="max-width: 900px;">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
-            <h2 class="h3 fw-bold mb-1"><i class="bi bi-pencil-square me-2 text-primary"></i>Editar Amostra</h2>
+            <h2 class="h3 fw-bold mb-1"><i class="bi bi-pencil-square me-2 text-primary"></i>Edit Sample</h2>
             <div class="d-flex align-items-center gap-2">
                 <span class="badge bg-secondary">{{ sample.sample_id }}</span>
                 {% if form.instance.sample_type %}
                     <span class="badge bg-info text-dark"><i class="bi bi-tag me-1"></i>{{ form.instance.sample_type }}</span>
                 {% endif %}
+                <span class="text-muted small fw-bold ms-2">{{ sample.organism_name }}</span>
             </div>
         </div>
         <a href="{% url 'samples_list' %}" class="btn btn-outline-secondary">
-            <i class="bi bi-arrow-left me-2"></i>Voltar
+            <i class="bi bi-arrow-left me-2"></i>Back
         </a>
     </div>
 
@@ -33,35 +34,31 @@
         <div class="card shadow-sm border-0 mb-4">
             <div class="card-body p-4">
                 
-                <h5 class="text-uppercase text-muted fw-bold small mb-3 border-bottom pb-2">1. Dados Gerais e Governança</h5>
+                <h5 class="text-uppercase text-muted fw-bold small mb-3 border-bottom pb-2">1. General Data & Governance</h5>
                 <div class="row g-3">
                     
-                    <div class="col-md-6 mb-2">
+                    <div class="col-md-4 mb-2">
                         <label class="form-label fw-bold text-muted small text-uppercase">{{ form.sample_id.label }}</label>
                         {{ form.sample_id }}
-                    </div>
-                    <div class="col-md-6 mb-2">
-                        <label class="form-label fw-bold text-muted small text-uppercase">{{ form.organism_name.label }}</label>
-                        {{ form.organism_name }}
                     </div>
                     
                     <div class="col-md-4 mb-2">
                         <label class="form-label fw-bold text-muted small text-uppercase">{{ form.sample_type.label }}</label>
                         {{ form.sample_type }}
-                        <div class="form-text small text-warning">O tipo não pode ser alterado.</div>
+                        <div class="form-text small text-warning">The biological type cannot be changed.</div>
                     </div>
                     <div class="col-md-4 mb-2">
                         <label class="form-label fw-bold text-muted small text-uppercase">{{ form.status.label }}</label>
                         {{ form.status }}
                     </div>
                     
-                    <div class="col-md-4 mb-2">
-                        <label class="form-label fw-bold text-muted small text-uppercase">Localização Física</label>
+                    <div class="col-md-12 mb-2">
+                        <label class="form-label fw-bold text-muted small text-uppercase">Physical Location</label>
                         <div id="dynamicStorageContainer" class="form-control d-flex flex-wrap align-items-center gap-1 bg-light" style="min-height: 38px; cursor: text;">
                             <input type="hidden" name="storage_location" id="storage_location_hidden" value="{{ sample.storage_location|default:'' }}">
-                            <input type="text" id="storageInputVisual" class="border-0 p-0 m-0 bg-transparent" style="outline: none; flex-grow: 1; min-width: 150px;" placeholder="Adicionar nível e teclar Enter...">
+                            <input type="text" id="storageInputVisual" class="border-0 p-0 m-0 bg-transparent" style="outline: none; flex-grow: 1; min-width: 150px;" placeholder="Add level & Enter...">
                         </div>
-                        <div class="form-text small" style="font-size: 0.70rem;">(Ex: Freezer 1 ↵ Caixa A ↵)</div>
+                        <div class="form-text small" style="font-size: 0.70rem;">(Ex: Freezer 1 ↵ Box A ↵)</div>
                     </div>
 
                     <div class="col-md-6 mb-2">
@@ -79,19 +76,19 @@
                             <label class="form-check-label fw-bold ms-2" for="{{ form.is_public.id_for_label }}">
                                 {{ form.is_public.label }}
                             </label>
-                            <div class="form-text ms-4 ps-2">Marque para permitir que pesquisadores externos visualizem os metadados.</div>
+                            <div class="form-text ms-4 ps-2">Check to allow external researchers to view metadata.</div>
                         </div>
                     </div>
 
                 </div>
 
-                {% comment %} Campos Biológicos Dinâmicos {% endcomment %}
+                {% comment %} Dynamic Biological Fields {% endcomment %}
                 {% for field in form %}
                     {% if field.name not in "sample_id,sample_type,organism_name,status,is_public,storage_location,biobank,collections,scientific_notes" %}
                         {% if forloop.first or forloop.counter0 == 0 %} 
                             <div class="mt-5 p-4 bg-primary-subtle border border-primary rounded">
                                 <h5 class="text-uppercase text-primary fw-bold small mb-3 border-bottom border-primary pb-2">
-                                    <i class="bi bi-magic me-2"></i>2. Propriedades Biológicas
+                                    <i class="bi bi-magic me-2"></i>2. Biological Properties
                                 </h5>
                                 <div class="row g-3">
                         {% endif %}
@@ -115,14 +112,14 @@
 
                 <div class="mt-5 mb-4">
                     <h5 class="text-uppercase text-muted fw-bold small mb-3 border-bottom pb-2">
-                        <i class="fas fa-project-diagram me-2 text-success"></i>3. Rastreabilidade Biológica (Rede)
+                        <i class="fas fa-project-diagram me-2 text-success"></i>3. Biological Traceability (Network)
                     </h5>
                     
                     <div class="row g-4">
                         <div class="col-md-6">
                             <div class="card border-0 bg-light shadow-sm h-100">
                                 <div class="card-header bg-white border-bottom fw-bold text-secondary py-3">
-                                    <i class="bi bi-arrow-up-right me-2 text-warning"></i>Origem (Derivada de...)
+                                    <i class="bi bi-arrow-up-right me-2 text-warning"></i>Source (Derived from...)
                                 </div>
                                 <div class="card-body p-0">
                                     <ul class="list-group list-group-flush">
@@ -133,13 +130,13 @@
                                                     <a href="{% url 'sample_edit' rel.source_sample.id %}" class="fw-bold text-decoration-none">
                                                         {{ rel.source_sample.sample_id }}
                                                     </a>
-                                                    <small class="d-block text-muted">{{ rel.source_sample.sample_type|default:"Genérica" }}</small>
+                                                    <small class="d-block text-muted">{{ rel.source_sample.sample_type|default:"Generic" }}</small>
                                                     {% if rel.notes %}<small class="text-muted fst-italic mt-1 d-block"><i class="bi bi-info-circle me-1"></i>{{ rel.notes }}</small>{% endif %}
                                                 </div>
                                             </li>
                                         {% empty %}
                                             <li class="list-group-item bg-transparent text-muted small p-3 text-center">
-                                                Nenhuma origem registrada. (Amostra primária)
+                                                No origin registered. (Primary sample)
                                             </li>
                                         {% endfor %}
                                     </ul>
@@ -150,7 +147,7 @@
                         <div class="col-md-6">
                             <div class="card border-0 bg-light shadow-sm h-100">
                                 <div class="card-header bg-white border-bottom fw-bold text-secondary py-3">
-                                    <i class="bi bi-arrow-return-right me-2 text-success"></i>Destino (Gerou / Infecta...)
+                                    <i class="bi bi-arrow-return-right me-2 text-success"></i>Target (Generated / Infects...)
                                 </div>
                                 <div class="card-body p-0">
                                     <ul class="list-group list-group-flush">
@@ -161,13 +158,13 @@
                                                     <a href="{% url 'sample_edit' rel.target_sample.id %}" class="fw-bold text-decoration-none">
                                                         {{ rel.target_sample.sample_id }}
                                                     </a>
-                                                    <small class="d-block text-muted">{{ rel.target_sample.sample_type|default:"Genérica" }}</small>
+                                                    <small class="d-block text-muted">{{ rel.target_sample.sample_type|default:"Generic" }}</small>
                                                     {% if rel.notes %}<small class="text-muted fst-italic mt-1 d-block"><i class="bi bi-info-circle me-1"></i>{{ rel.notes }}</small>{% endif %}
                                                 </div>
                                             </li>
                                         {% empty %}
                                             <li class="list-group-item bg-transparent text-muted small p-3 text-center">
-                                                Não gerou nenhuma amostra e não possui interações registradas.
+                                                No generated samples or interactions registered.
                                             </li>
                                         {% endfor %}
                                     </ul>
@@ -178,16 +175,16 @@
                 </div>
 
                 <div class="mt-5 mb-4">
-                    <h5 class="text-uppercase text-muted fw-bold small mb-3 border-bottom pb-2">4. Notas Científicas (ELN)</h5>
+                    <h5 class="text-uppercase text-muted fw-bold small mb-3 border-bottom pb-2">4. Scientific Notes (ELN)</h5>
                     <div id="eln-editor" class="bg-white" style="height: 250px;">{{ sample.scientific_notes|safe }}</div>
                 </div>
 
                 <div class="mt-5">
-                    <h5 class="text-uppercase text-muted fw-bold small mb-3 border-bottom pb-2">5. Arquivos e Anexos</h5>
+                    <h5 class="text-uppercase text-muted fw-bold small mb-3 border-bottom pb-2">5. Files and Attachments</h5>
                     <div class="row g-4">
                         
                         <div class="col-md-6">
-                            <label class="form-label fw-bold text-muted small text-uppercase">Arquivos Salvos</label>
+                            <label class="form-label fw-bold text-muted small text-uppercase">Saved Files</label>
                             {% if sample_files %}
                             <ul class="list-group list-group-flush border rounded shadow-sm">
                                 {% for anexo in sample_files %}
@@ -200,23 +197,23 @@
                                         <a href="{{ anexo.file.url }}" target="_blank" class="btn btn-sm btn-outline-primary py-0 px-2" style="font-size: 0.75rem;">Download</a>
                                     </div>
                                     <div class="text-truncate small fw-bold" title="{{ anexo.file.name }}">{{ anexo.file.name|slice:"15:" }}...</div>
-                                    <div class="small text-muted fst-italic mt-1">{{ anexo.description|default:"Sem descrição." }}</div>
+                                    <div class="small text-muted fst-italic mt-1">{{ anexo.description|default:"No description." }}</div>
                                 </li>
                                 {% endfor %}
                             </ul>
                             {% else %}
                                 <div class="p-3 bg-light rounded text-center border text-muted small">
-                                    Nenhum arquivo anexado nesta amostra.
+                                    No files attached to this sample.
                                 </div>
                             {% endif %}
                         </div>
 
                         <div class="col-md-6">
                             <div class="p-3 border rounded bg-light h-100">
-                                <label class="form-label fw-bold text-muted small text-uppercase mb-3"><i class="bi bi-cloud-arrow-up me-1"></i> Adicionar Novos Arquivos</label>
+                                <label class="form-label fw-bold text-muted small text-uppercase mb-3"><i class="bi bi-cloud-arrow-up me-1"></i> Upload New Files</label>
                                 <div id="fileContainer" class="d-flex flex-column gap-3 mb-3 mt-2"></div>
                                 <button type="button" id="addFileBtn" class="btn btn-sm w-100 btn-outline-secondary bg-white border-dashed shadow-sm">
-                                    <i class="bi bi-plus me-1"></i>Adicionar Arquivo
+                                    <i class="bi bi-plus me-1"></i>Add File
                                 </button>
                             </div>
                         </div>
@@ -227,9 +224,9 @@
             </div>
 
             <div class="card-footer bg-light border-top p-4 text-end">
-                <a href="{% url 'samples_list' %}" class="btn btn-white border me-2 px-4">Cancelar</a>
+                <a href="{% url 'samples_list' %}" class="btn btn-white border me-2 px-4">Cancel</a>
                 <button type="submit" class="btn btn-primary px-5 fw-bold shadow-sm">
-                    <i class="bi bi-save me-2"></i>Salvar Alterações
+                    <i class="bi bi-save me-2"></i>Save Changes
                 </button>
             </div>
         </div>
@@ -243,6 +240,22 @@
 
 <script>
     document.addEventListener("DOMContentLoaded", function() {
+        
+        // =========================================================
+        // PREVENT FORM SUBMISSION ON ENTER
+        // =========================================================
+        const mainForm = document.getElementById("mainSampleForm");
+        if (mainForm) {
+            mainForm.addEventListener("keydown", function(event) {
+                // Allow Enter in textareas, buttons, and the dynamic path input
+                if (event.key === "Enter") {
+                    if (event.target.tagName !== "TEXTAREA" && event.target.tagName !== "BUTTON" && event.target.id !== "storageInputVisual") {
+                        event.preventDefault();
+                    }
+                }
+            });
+        }
+
         const addFileBtn = document.getElementById("addFileBtn");
         const fileContainer = document.getElementById("fileContainer");
 
@@ -253,23 +266,23 @@
                 row.innerHTML = `
                     <button type="button" class="btn-close position-absolute top-0 end-0 m-2" style="font-size: 0.6rem;" onclick="this.parentElement.remove()"></button>
                     <div class="mb-2 pe-4">
-                        <label class="small fw-bold text-muted">Arquivo <span class="text-danger">*</span></label>
+                        <label class="small fw-bold text-muted">File <span class="text-danger">*</span></label>
                         <input type="file" name="file" class="form-control form-control-sm" required>
                     </div>
                     <div class="row g-2">
                         <div class="col-md-5">
-                            <label class="small fw-bold text-muted">Categoria</label>
+                            <label class="small fw-bold text-muted">Category</label>
                             <select name="file_category" class="form-select form-select-sm">
                                 <option value="Sequence">Fasta/Sequence</option>
-                                <option value="Protocol">Protocolo</option>
-                                <option value="Image">Imagem/Gel</option>
-                                <option value="Report">Relatório</option>
-                                <option value="Other" selected>Outro</option>
+                                <option value="Protocol">Protocol</option>
+                                <option value="Image">Image/Gel</option>
+                                <option value="Report">Report</option>
+                                <option value="Other" selected>Other</option>
                             </select>
                         </div>
                         <div class="col-md-7">
-                            <label class="small fw-bold text-muted">Descrição</label>
-                            <input type="text" name="file_description" class="form-control form-control-sm" placeholder="Ex: Resultado do Gel...">
+                            <label class="small fw-bold text-muted">Description</label>
+                            <input type="text" name="file_description" class="form-control form-control-sm" placeholder="Ex: Gel Result...">
                         </div>
                     </div>
                 `;

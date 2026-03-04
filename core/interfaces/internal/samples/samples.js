@@ -1,5 +1,5 @@
 /* =========================================================
-   SAMPLES PAGE JS - VERSÃO FINAL (Sem Filogenia, Com EAV e Storage Dinâmico)
+   SAMPLES PAGE JS - FINAL VERSION (EAV and Dynamic Storage)
 ========================================================= */
 
 function getCsrfToken() {
@@ -8,33 +8,33 @@ function getCsrfToken() {
 
 document.addEventListener("DOMContentLoaded", () => {
 
-    /* --- 0. INICIALIZAÇÃO DO ELN (QUILL) --- */
+    /* --- 0. ELN INITIALIZATION (QUILL) --- */
     let quill = null;
     if(document.getElementById('eln-editor')) {
         quill = new Quill('#eln-editor', { theme: 'snow' });
     }
 
-    /* --- 1. FORM PRINCIPAL (Validações e Envios) --- */
+    /* --- 1. MAIN FORM (Validation & Submit) --- */
     const mainSampleForm = document.getElementById("mainSampleForm");
     if (mainSampleForm) {
         mainSampleForm.addEventListener("submit", function(e) {
-            // Salva o conteúdo do Quill Editor
+            // Save Quill Editor content
             if (quill) {
                 const notesInput = document.getElementById("scientific_notes_input");
                 if(notesInput) notesInput.value = quill.root.innerHTML;
             }
 
-            // Valida se selecionou pelo menos um biobanco
+            // Validate if at least one biobank was selected
             const biobankInputs = document.querySelectorAll('input[name="dist_biobank_id[]"]');
             if (biobankInputs.length === 0) {
                 e.preventDefault();
-                alert("Adicione pelo menos um Biobanco físico.");
+                alert("Please add at least one physical Biobank location.");
                 return false;
             }
         });
     }
 
-    /* --- 2. TAGS (Se os modais forem usados no futuro) --- */
+    /* --- 2. TAGS (If modals are used in the future) --- */
     function initTagSystem() {
         document.querySelectorAll(".selectable-tag").forEach(chip => {
             if (chip.dataset.bound) return;
@@ -100,7 +100,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
-    /* --- 3. KEYWORDS GENÉRICAS --- */
+    /* --- 3. GENERIC KEYWORDS --- */
     function initKeywordSystem() {
         const btnSave = document.getElementById("btnSaveKeywordAJAX");
         if (btnSave) {
@@ -141,7 +141,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
-    /* --- 4. CONSTRUTOR DINÂMICO DE LOCALIZAÇÃO (Breadcrumbs) --- */
+    /* --- 4. DYNAMIC STORAGE PATH BUILDER --- */
     function initDynamicStorage() {
         const container = document.getElementById('dynamicStorageContainer');
         const hiddenInput = document.getElementById('storage_location_hidden');
@@ -167,7 +167,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 container.insertBefore(arrow, textInput);
             });
 
-            // Envia para o Django no formato limpo: "Freezer 1 > Caixa A"
+            // Send to Django in a clean format: "Freezer 1 > Box A"
             hiddenInput.value = levels.join(" > ");
             textInput.focus();
         }
@@ -237,7 +237,7 @@ document.addEventListener("DOMContentLoaded", () => {
                             <input type="hidden" name="dist_biobank_id[]" value="${bbId}">
                             <input type="hidden" name="dist_collection_id[]" value="${selectedColId}">
                             <div class="d-flex gap-2 align-items-center">
-                                <span class="text-muted small">Qtd. Alíquotas:</span>
+                                <span class="text-muted small">Aliquots Qty:</span>
                                 <input type="number" name="dist_quantity[]" class="form-control form-control-sm" value="1" min="1" style="width: 80px;">
                             </div>
                         </div>
@@ -262,10 +262,18 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
-    /* --- 6. TEMPLATES DINÂMICOS (Com Tipagem Correta) --- */
+    /* --- 6. DYNAMIC TEMPLATES (With Genus and Custom Other) --- */
     function getFieldHTML(field) {
         const label = field.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
         
+        // Custom "Other" handling
+        if (field === 'custom_organism_name') {
+             return `
+                <label class="section-label text-primary">Organism / Custom Description <span class="text-danger">*</span></label>
+                <input type="text" name="${field}" class="form-control form-control-sm border-primary fw-bold" placeholder="Specify what this sample is..." required>
+            `;
+        }
+
         if (field.includes('size_bp')) {
             return `
                 <label class="section-label">${label}</label>
@@ -282,11 +290,11 @@ document.addEventListener("DOMContentLoaded", () => {
             return `
                 <label class="section-label">${label}</label>
                 <select name="${field}" class="form-select form-select-sm bg-white">
-                    <option value="">Selecione...</option>
+                    <option value="">Select...</option>
                     <option value="myovirus">Myovirus</option>
                     <option value="siphovirus">Siphovirus</option>
                     <option value="podovirus">Podovirus</option>
-                    <option value="outros">Outros</option>
+                    <option value="other">Other</option>
                 </select>
             `;
         }
@@ -294,7 +302,7 @@ document.addEventListener("DOMContentLoaded", () => {
             return `
                 <label class="section-label">${label}</label>
                 <select name="${field}" class="form-select form-select-sm bg-white">
-                    <option value="">Selecione...</option>
+                    <option value="">Select...</option>
                     <option value="lytic">Lytic</option>
                     <option value="lysogenic">Lysogenic</option>
                 </select>
@@ -304,7 +312,7 @@ document.addEventListener("DOMContentLoaded", () => {
             return `
                 <label class="section-label">${label}</label>
                 <select name="${field}" class="form-select form-select-sm bg-white">
-                    <option value="">Selecione...</option>
+                    <option value="">Select...</option>
                     <option value="dsDNA">dsDNA</option>
                     <option value="ssDNA">ssDNA</option>
                     <option value="dsRNA">dsRNA</option>
@@ -316,7 +324,7 @@ document.addEventListener("DOMContentLoaded", () => {
             return `
                 <label class="section-label">${label}</label>
                 <select name="${field}" class="form-select form-select-sm bg-white">
-                    <option value="">Selecione...</option>
+                    <option value="">Select...</option>
                     <option value="expression">Expression</option>
                     <option value="suicide">Suicide</option>
                     <option value="conjugation">Conjugation</option>
@@ -336,11 +344,13 @@ document.addEventListener("DOMContentLoaded", () => {
         const fieldsBox = document.getElementById('templateFields');
         const typeNameLabel = document.getElementById('templateTypeName');
 
+        // ADDED: "genus" for Phage and Bacteria. "custom_organism_name" for Other.
         const templates = {
-            "Phage (Virus)": ["morphotype", "taxonomy", "lifestyle", "isolation_source", "genome_type", "genome_size_bp", "temp_C", "ncbi_accession"],
-            "Bacteria (Host)": ["species", "strain", "genotype", "resistance_markers"],
+            "Phage (Virus)": ["genus", "morphotype", "taxonomy", "lifestyle", "isolation_source", "genome_type", "genome_size_bp", "temp_C", "ncbi_accession"],
+            "Bacteria (Host)": ["genus", "species", "strain", "genotype", "resistance_markers"],
             "Vector (Backbone)": ["vector_type", "induction_system", "vector_size_bp", "resistance_markers"],
-            "Construction (Plasmid)": ["construction_name", "insert_name", "insert_size_bp"]
+            "Construction (Plasmid)": ["construction_name", "insert_name", "insert_size_bp"],
+            "Other": ["custom_organism_name"]
         };
 
         if(typeInput && container && fieldsBox) {
@@ -354,7 +364,8 @@ document.addEventListener("DOMContentLoaded", () => {
                     
                     templates[selectedType].forEach(field => {
                         const col = document.createElement('div');
-                        col.className = 'col-md-3';
+                        // Make the custom text box larger for better UX
+                        col.className = field === 'custom_organism_name' ? 'col-md-6' : 'col-md-3';
                         col.innerHTML = getFieldHTML(field);
                         fieldsBox.appendChild(col);
                     });
@@ -365,7 +376,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
-    // --- INICIALIZAÇÕES ---
+    // --- INITIALIZATIONS ---
     initTagSystem();
     initTagAJAX();
     initKeywordSystem();
