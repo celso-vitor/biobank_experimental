@@ -28,7 +28,6 @@ from core.views.internal.profile.views import profile_view
 from core.views.internal.calendar.views import calendar_view
 
 # 4. BIOBANKS & COLLECTIONS (Gestão Interna)
-# Certifique-se de que os nomes das funções (biobanks_list_view, etc) existem nos arquivos views.py
 from core.views.internal.biobanks.views import biobanks_list_view
 from core.views.internal.collections.views import collections_list_view
 
@@ -39,7 +38,8 @@ from core.views.internal.samples.views import (
     sample_create_view,
     export_samples_csv,
     sample_edit_view,
-   sample_relate_view,  # Função que processa o Novo Modal Múltiplo
+    sample_relate_view,
+    samples_network_view,  # <-- FUNÇÃO DO GRAFO IMPORTADA AQUI
 )
 
 # 6. CHEMICALS (REAGENTES)
@@ -84,6 +84,7 @@ urlpatterns = [
     # ---------------- SAMPLES (AMOSTRAS) ----------------
     path("samples/", samples_list_view, name="samples_list"),
     path("samples/add/", sample_create_view, name="sample_add"),
+    path("samples/network/", samples_network_view, name="samples_network"), # <-- ROTA DO GRAFO AQUI
     path("samples/<int:sample_id>/print/", print_sample_label, name="print_sample_label"),
     path("samples/<int:sample_id>/edit/", sample_edit_view, name="sample_edit"),
     path("samples/<int:sample_id>/relate/", sample_relate_view, name="sample_relate"),
@@ -107,7 +108,6 @@ urlpatterns = [
     path('internal/lab-tools/plasmid/', plasmid_views.plasmid_editor, name='plasmid_editor'),
 ]
 
-# Configuração para arquivos de mídia e estáticos em desenvolvimento
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
     urlpatterns += staticfiles_urlpatterns()

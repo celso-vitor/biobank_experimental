@@ -37,7 +37,11 @@
                             <div class="input-group">
                                 <span class="input-group-text bg-white text-muted"><i class="bi bi-upc-scan"></i></span>
                                 <input type="text" name="sample_id" id="id_external_identifier" class="form-control fw-bold" placeholder="Ex: SMP-2026-001" required>
+                                <button type="button" id="btnGenerateAutoId" class="btn btn-outline-primary" title="Generate next ID">
+                                    <i class="bi bi-arrow-clockwise"></i>
+                                </button>
                             </div>
+                            <div class="form-text small" id="autoIdHelpText">Select a Sample Type first to generate an ID.</div>
                         </div>
 
                         <div class="col-md-4">
@@ -46,9 +50,7 @@
                                 <option value="" selected disabled>Select type...</option>
                                 <option value="Bacterium (Host)">Bacterium (Host)</option>
                                 <option value="Phage (Virus)">Phage (Virus)</option>
-                                <option value="Vector Backbone">Vector Backbone</option>
-                                <option value="Insert">Insert</option>
-                                <option value="Plasmid (Backbone + Insert)">Plasmid (Backbone + Insert)</option>
+                                <option value="Plasmid">Plasmid</option>
                                 <option value="Other">Other</option>
                             </select>
                         </div>
@@ -62,36 +64,6 @@
                                 <input type="text" id="storageInputVisual" class="border-0 p-0 m-0 bg-transparent" style="outline: none; flex-grow: 1; min-width: 150px;" placeholder="Add level and press Enter...">
                             </div>
                         </div>
-
-                        <div id="plasmidAssemblySection" class="col-md-12 border-start border-3 border-info ps-4 mt-2 d-none">
-                            <div class="p-3 bg-info-subtle rounded border border-info">
-                                <label class="section-label text-info-emphasis mb-3"><i class="bi bi-puzzle me-2"></i>Plasmid Assembly Parts</label>
-                                <div class="row">
-                                    <div class="col-md-6">
-                                        <label class="small fw-bold text-dark">Vector Backbone <span class="text-danger">*</span></label>
-                                        <select name="backbone" class="form-select border-info">
-                                            <option value="">Select an empty backbone...</option>
-                                            {% for s in all_samples %}
-                                                {% if s.sample_type == 'Vector Backbone' %}
-                                                    <option value="{{ s.id }}">{{ s.organism_name }} ({{ s.sample_id }})</option>
-                                                {% endif %}
-                                            {% endfor %}
-                                        </select>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <label class="small fw-bold text-dark">Insert Part (Optional)</label>
-                                        <select name="insert_part" class="form-select border-info">
-                                            <option value="">None (Empty Vector Circulation)</option>
-                                            {% for s in all_samples %}
-                                                {% if s.sample_type == 'Insert' %}
-                                                    <option value="{{ s.id }}">{{ s.organism_name }} ({{ s.sample_id }})</option>
-                                                {% endif %}
-                                            {% endfor %}
-                                        </select>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
                         
                         <div class="col-md-12 border-start border-3 border-warning ps-4 mt-4">
                             <div class="row">
@@ -103,7 +75,7 @@
                                         <option value="{{ s.sample_id }}">{{ s.organism_name|default:"No Organism" }} ({{ s.sample_type|default:"Generic" }})</option>
                                     {% endfor %}
                                     </datalist> 
-                                    <div class="form-text small">Fill this in if this sample is derived from another already in the system.</div>
+                                    <div class="form-text small">Fill this in if this sample is physically derived from another.</div>
                                 </div>
 
                                 <div class="col-md-6">
@@ -117,7 +89,52 @@
                             </div>
                         </div>
 
+                        <div class="col-md-12 mt-4 mb-2">
+                            <label class="section-label"><i class="bi bi-person-badge me-1"></i>Collaborator / Provider</label>
+                            <input type="text" name="collaborator" class="form-control bg-light" placeholder="Who isolated, donated or provided this sample?">
+                        </div>
+
                     </div>
+                </div>
+
+                <div id="biologicalRelationshipsSection" class="p-4 mb-5 bg-success-subtle rounded border border-success d-none">
+                    <div class="d-flex align-items-center mb-3">
+                        <i class="bi bi-diagram-3 fs-5 text-success me-2"></i>
+                        <h6 class="mb-0 text-success fw-bold">Biological Interactions & Storage</h6>
+                    </div>
+                    
+                    <div class="row g-4">
+                        <div id="hostBacteriumDiv" class="col-md-12 d-none">
+                            <label class="small fw-bold text-dark mb-2">Host Bacterium</label>
+                            <div id="hostBacteriumContainer" class="d-flex flex-column gap-2 mb-2"></div>
+                            <button type="button" class="btn btn-sm btn-outline-success border-dashed w-100" onclick="addRelationRow('hostBacteriumContainer', 'host_bacterium[]', 'allSamplesListForJS', 'Specific notes (e.g. EOP, Infection rate...)')">
+                                <i class="bi bi-plus-lg"></i> Add Host Bacterium
+                            </button>
+                            <div class="form-text small mt-1 text-muted" id="hostBacteriumHelp"></div>
+                        </div>
+
+                        <div id="storedPlasmidsDiv" class="col-md-12 d-none">
+                            <label class="small fw-bold text-dark mb-2">Stored Plasmids</label>
+                            <div id="storedPlasmidsContainer" class="d-flex flex-column gap-2 mb-2"></div>
+                            <button type="button" class="btn btn-sm btn-outline-success border-dashed w-100" onclick="addRelationRow('storedPlasmidsContainer', 'stored_plasmids[]', 'allSamplesListForJS', 'Specific notes (e.g. Copy number, Stability...)')">
+                                <i class="bi bi-plus-lg"></i> Add Plasmid
+                            </button>
+                        </div>
+
+                        <div id="infectingPhagesDiv" class="col-md-12 d-none">
+                            <label class="small fw-bold text-dark mb-2">Infecting Phages (Host-Range)</label>
+                            <div id="infectingPhagesContainer" class="d-flex flex-column gap-2 mb-2"></div>
+                            <button type="button" class="btn btn-sm btn-outline-success border-dashed w-100" onclick="addRelationRow('infectingPhagesContainer', 'infecting_phages[]', 'allSamplesListForJS', 'Specific notes (e.g. EOP, Plaque morphology...)')">
+                                <i class="bi bi-plus-lg"></i> Add Phage
+                            </button>
+                        </div>
+                    </div>
+
+                    <datalist id="allSamplesListForJS">
+                        {% for s in all_samples %}
+                            <option value="{{ s.sample_id }}">{{ s.organism_name }}</option>
+                        {% endfor %}
+                    </datalist>
                 </div>
 
                 <div id="dynamicTemplateContainer" class="p-4 mb-5 bg-primary-subtle rounded border border-primary d-none">
@@ -238,22 +255,6 @@
 
 <script>
     document.addEventListener("DOMContentLoaded", function() {
-        
-        // =========================================================
-        // TOGGLE PLASMID ASSEMBLY SECTION
-        // =========================================================
-        const typeInput = document.getElementById('sampleTypeInput');
-        const plasmidSection = document.getElementById('plasmidAssemblySection');
-        
-        if(typeInput && plasmidSection) {
-            typeInput.addEventListener('change', function() {
-                if(this.value === 'Plasmid (Backbone + Insert)') {
-                    plasmidSection.classList.remove('d-none');
-                } else {
-                    plasmidSection.classList.add('d-none');
-                }
-            });
-        }
 
         // =========================================================
         // PREVENIR ENVIO DO FORMULÁRIO COM 'ENTER'

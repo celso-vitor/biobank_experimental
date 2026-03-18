@@ -7,7 +7,7 @@
     /* Ensures the table area has enough space for dropdown menus to breathe */
     .table-responsive {
         min-height: 300px !important;
-        padding-bottom: 150px; /* Extra space for the last row dropdown */
+        padding-bottom: 150px; 
     }
 </style>
 {% endblock %}
@@ -19,6 +19,9 @@
 {# --- 2. ACTION BUTTONS --- #}
 {% block manage_actions %}
 <div class="d-flex gap-2">
+    <a href="{% url 'samples_network' %}" class="btn btn-info text-white fw-bold shadow-sm">
+        <i class="bi bi-diagram-3-fill me-2"></i>Network View
+    </a>
     <a href="{% url 'export_samples_csv' %}" class="btn btn-outline-secondary">
         <i class="fas fa-download me-2"></i>Export
     </a>
@@ -28,36 +31,45 @@
 </div>
 {% endblock %}
 
-{# --- 3. FILTERS --- #}
+{# --- 3. FILTERS E SEARCH INTEGRADO --- #}
 {% block manage_filters %}
-<form method="get" class="d-flex gap-2 w-100 justify-content-end" id="filterForm">
-    <input type="hidden" name="page" value="samples">
+<form method="get" class="d-flex gap-3 w-100 justify-content-between align-items-center bg-white p-2 rounded border shadow-sm" id="filterForm">
     
-    {% if request.GET.q %}
-    <input type="hidden" name="q" value="{{ request.GET.q }}">
-    {% endif %}
+    <div class="input-group input-group-sm" style="max-width: 350px;">
+        <span class="input-group-text bg-light text-muted border-end-0"><i class="bi bi-search"></i></span>
+        <input type="text" name="q" class="form-control border-start-0" placeholder="Search ID or Organism..." value="{{ request.GET.q|default:'' }}">
+        
+        {% if request.GET.q %}
+            <a href="{% url 'samples_list' %}" class="btn btn-outline-secondary" title="Clear search">
+                <i class="bi bi-x-lg"></i>
+            </a>
+        {% endif %}
+        <button type="submit" class="d-none"></button>
+    </div>
 
-    <select name="status" class="form-select form-select-sm" style="max-width: 150px;" onchange="document.getElementById('filterForm').submit()">
-        <option value="">Status: All</option>
-        <option value="pending" {% if request.GET.status == 'pending' %}selected{% endif %}>Pending</option>
-        <option value="qc" {% if request.GET.status == 'qc' %}selected{% endif %}>In QC</option>
-        <option value="available" {% if request.GET.status == 'available' %}selected{% endif %}>Available</option>
-        <option value="depleted" {% if request.GET.status == 'depleted' %}selected{% endif %}>Depleted</option>
-    </select>
+    <div class="d-flex gap-2">
+        <select name="status" class="form-select form-select-sm bg-light" style="min-width: 140px;" onchange="document.getElementById('filterForm').submit()">
+            <option value="">Status: All</option>
+            <option value="pending" {% if request.GET.status == 'pending' %}selected{% endif %}>Pending</option>
+            <option value="qc" {% if request.GET.status == 'qc' %}selected{% endif %}>In QC</option>
+            <option value="available" {% if request.GET.status == 'available' %}selected{% endif %}>Available</option>
+            <option value="depleted" {% if request.GET.status == 'depleted' %}selected{% endif %}>Depleted</option>
+        </select>
 
-    <select name="collection" class="form-select form-select-sm" style="max-width: 180px;" onchange="document.getElementById('filterForm').submit()">
-        <option value="">Collection: All</option>
-        {% for col in filter_collections %}
-            <option value="{{ col.id }}" {% if request.GET.collection == col.id|stringformat:"i" %}selected{% endif %}>{{ col.name }}</option>
-        {% endfor %}
-    </select>
+        <select name="collection" class="form-select form-select-sm bg-light" style="min-width: 160px;" onchange="document.getElementById('filterForm').submit()">
+            <option value="">Collection: All</option>
+            {% for col in filter_collections %}
+                <option value="{{ col.id }}" {% if request.GET.collection == col.id|stringformat:"i" %}selected{% endif %}>{{ col.name }}</option>
+            {% endfor %}
+        </select>
+    </div>
 </form>
 {% endblock %}
 
 {# --- 4. TABLE HEADER --- #}
 {% block table_header %}
     <th class="ps-4">ID / Barcode</th>
-    <th>Organism</th>
+    <th>Identification</th>
     <th>Biological Type</th>
     <th>Storage Location</th>
     <th>Status</th>
@@ -82,14 +94,12 @@
             {% endif %}
         </td>
         <td class="align-middle fw-medium">
-            {% if sample.sample_type == 'Bacteria (Host)' %}
+            {% if 'Bacterium' in sample.sample_type %}
                 <i class="fas fa-bacterium text-success me-2" title="Bacteria"></i>
-            {% elif sample.sample_type == 'Phage (Virus)' %}
+            {% elif 'Phage' in sample.sample_type %}
                 <i class="fas fa-virus text-danger me-2" title="Phage"></i>
-            {% elif sample.sample_type == 'Vector (Backbone)' %}
-                <i class="fas fa-circle-notch text-primary me-2" title="Vector"></i>
-            {% elif sample.sample_type == 'Construction (Plasmid)' %}
-                <i class="fas fa-dna text-info me-2" title="Construction"></i>
+            {% elif 'Plasmid' in sample.sample_type %}
+                <i class="fas fa-dna text-info me-2" title="Plasmid"></i>
             {% else %}
                 <i class="fas fa-vial text-secondary me-2" title="Generic Sample"></i>
             {% endif %}
@@ -134,14 +144,6 @@
                             <i class="fas fa-qrcode text-secondary me-2" style="width: 15px; text-align: center;"></i>Print Label
                         </a>
                     </li>
-                    <li><hr class="dropdown-divider"></li>
-                    <li>
-                        <a class="dropdown-item py-2 fw-bold text-success bg-success-subtle relate-btn" href="#" 
-                           data-bs-toggle="modal" data-bs-target="#relateModal" 
-                           data-sample-id="{{ sample.id }}" data-sample-name="{{ sample.sample_id }}">
-                            <i class="fas fa-project-diagram me-2" style="width: 15px; text-align: center;"></i>Relate Samples
-                        </a>
-                    </li>
                 </ul>
             </div>
 
@@ -156,77 +158,4 @@
         </td>
     </tr>
     {% endfor %}
-
-    <div class="modal fade" id="relateModal" tabindex="-1" aria-labelledby="relateModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content border-0 shadow">
-                <form id="relateForm" method="POST" action="">
-                    {% csrf_token %}
-                    <div class="modal-header bg-success text-white border-0">
-                        <h5 class="modal-title fw-bold" id="relateModalLabel">
-                            <i class="fas fa-project-diagram me-2"></i>New Relationship: <span id="modalSourceSampleName"></span>
-                        </h5>
-                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-                    </div>
-                    
-                    <div class="modal-body p-4 bg-light">
-                        
-                        <div class="mb-4">
-                            <label class="form-label fw-bold text-dark">Target Sample <span class="text-danger">*</span></label>
-                            <select name="target_sample_id" class="form-select border-success-subtle shadow-sm" required>
-                                <option value="" selected disabled>Select target sample...</option>
-                                {% for s in all_samples_for_modal %}
-                                    <option value="{{ s.id }}">{{ s.sample_id }} ({{ s.sample_type|default:"Generic" }})</option>
-                                {% endfor %}
-                            </select>
-                            <div class="form-text mt-2"><i class="fas fa-info-circle me-1"></i>Which sample was generated or is the target of this interaction?</div>
-                        </div>
-
-                        <div class="mb-4">
-                            <label class="form-label fw-bold text-dark">Relationship Type <span class="text-danger">*</span></label>
-                            <select name="relationship_type" class="form-select border-success-subtle shadow-sm" required>
-                                <option value="derived_from">Derived from (Passage / Subculture)</option>
-                                <option value="mutated_from">Mutation of</option>
-                                <option value="assembled_from">Assembled from (Vector + Insert)</option>
-                                <option value="extracted_from">Extracted from (DNA / RNA)</option>
-                                <option value="infects">Infects (Host-Range)</option>
-                                <option value="other">Other Relationship...</option>
-                            </select>
-                        </div>
-                        
-                        <div class="mb-2">
-                            <label class="form-label fw-bold text-dark">Notes / Protocol (Optional)</label>
-                            <textarea name="notes" class="form-control shadow-sm" rows="3" placeholder="Experiment details, infection efficiency, primers used..."></textarea>
-                        </div>
-
-                    </div>
-                    
-                    <div class="modal-footer bg-white border-top-0 pt-0">
-                        <button type="button" class="btn btn-white border px-4" data-bs-dismiss="modal">Cancel</button>
-                        <button type="submit" class="btn btn-success px-4 fw-bold shadow-sm">
-                            <i class="fas fa-link me-2"></i>Save Relationship
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
-    
-    <script>
-        document.addEventListener("DOMContentLoaded", function() {
-            const relateModal = document.getElementById('relateModal');
-            if (relateModal) {
-                relateModal.addEventListener('show.bs.modal', function (event) {
-                    const button = event.relatedTarget;
-                    const sampleId = button.getAttribute('data-sample-id');
-                    const sampleName = button.getAttribute('data-sample-name');
-                    
-                    document.getElementById('modalSourceSampleName').textContent = sampleName;
-                    
-                    const form = document.getElementById('relateForm');
-                    form.action = `/samples/${sampleId}/relate/`;
-                });
-            }
-        });
-    </script>
 {% endblock %}

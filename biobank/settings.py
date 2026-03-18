@@ -15,23 +15,19 @@ env = environ.Env(
 environ.Env.read_env(os.path.join(BASE_DIR, '.env'))
 
 # =========================
-# SEGURANÇA / DEBUG / PROXY
+# SEGURANÇA / DEBUG / PROXY (APACHE)
 # =========================
 SECRET_KEY = env('SECRET_KEY', default="dev-secret-key") 
 DEBUG = env('DEBUG')
 ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=['*'])
 
-FORCE_SCRIPT_NAME = '/biobank'
-
-# ---> ADICIONE ESTAS DUAS LINHAS ABAIXO <---
-
-# 1. Autoriza o domínio da USP a enviar formulários POST (Resolve o Erro 403)
+# 1. Autoriza o domínio da USP a enviar formulários POST (Resolve o Erro 403 CSRF)
 CSRF_TRUSTED_ORIGINS = ['https://davinci.icb.usp.br']
 
 # 2. Avisa o Django que o Apache já cuidou do cadeado de segurança (HTTPS)
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
-# Avisa o Django que ele está rodando atrás de um subdiretório no Apache
+# 3. Avisa o Django que ele está rodando atrás de um subdiretório no Apache
 FORCE_SCRIPT_NAME = '/biobank'
 
 # =========================
@@ -49,7 +45,7 @@ INSTALLED_APPS = [
     # 2. App Principal
     "core.apps.CoreConfig",
 
-    # 4. Utilitários Externos
+    # 3. Utilitários Externos
     "import_export",  
     "django_extensions",
     "rest_framework",
@@ -97,27 +93,35 @@ TEMPLATES = [
 ]
 
 # =========================
-# DATABASE (DINÂMICO: POSTGRES OU SQLITE)
+# DATABASE
 # =========================
 DATABASES = {
     "default": env.db("DATABASE_URL", default=f"sqlite:///{BASE_DIR / 'db.sqlite3'}")
 }
 
 # =========================
-# STATIC FILES (CSS, JS, IMAGES)
+# STATIC FILES (CSS, JS, IMAGES) - CONFIGURAÇÃO APACHE
 # =========================
+# URL base que o navegador vai procurar
 STATIC_URL = "/biobank/static/"
+
+# Onde o Django vai procurar seus arquivos CSS/JS durante o desenvolvimento
 STATICFILES_DIRS = [
     BASE_DIR / "core" / "interfaces",
     BASE_DIR / "static",
 ]
+
+# Onde o comando 'collectstatic' vai juntar tudo para o Apache ler
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
 # =========================
-# MEDIA (UPLOADS DE AMOSTRAS)
+# MEDIA (UPLOADS DE AMOSTRAS E ARQUIVOS)
 # =========================
 MEDIA_URL = "/biobank/data/"
 MEDIA_ROOT = BASE_DIR / "data"
+
+# Aumenta o limite de upload para arquivos científicos (ex: 50MB)
+DATA_UPLOAD_MAX_MEMORY_SIZE = 52428800
 
 # =========================
 # INTERNACIONALIZAÇÃO

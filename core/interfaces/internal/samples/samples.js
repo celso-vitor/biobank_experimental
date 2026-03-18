@@ -1,10 +1,33 @@
 /* =========================================================
-   SAMPLES PAGE JS - FINAL VERSION (EAV and Dynamic Storage)
+   SAMPLES PAGE JS - UNIFIED PLASMID & DYNAMIC RELATIONS
 ========================================================= */
 
 function getCsrfToken() {
     return document.querySelector("[name=csrfmiddlewaretoken]")?.value;
 }
+
+// =========================================================
+// GLOBAL FUNCTION FOR REPEATERS (BIOLOGICAL INTERACTIONS)
+// =========================================================
+window.addRelationRow = function(containerId, nameParam, listSourceId, notesPlaceholder) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+
+    const row = document.createElement('div');
+    row.className = "d-flex gap-2 align-items-center bg-white p-2 border rounded relation-row-item shadow-sm mb-2";
+    
+    row.innerHTML = `
+        <div style="flex: 1;">
+            <input type="text" name="${nameParam}" list="${listSourceId}" class="form-control form-control-sm border-success-subtle" placeholder="Search ID..." required autocomplete="off">
+        </div>
+        <div style="flex: 1.5;">
+            <input type="text" name="${nameParam.replace('[]', '_notes[]')}" class="form-control form-control-sm" placeholder="${notesPlaceholder}">
+        </div>
+        <button type="button" class="btn btn-sm btn-outline-danger border-0" onclick="this.closest('.relation-row-item').remove()"><i class="bi bi-trash"></i></button>
+    `;
+    container.appendChild(row);
+};
+
 
 document.addEventListener("DOMContentLoaded", () => {
 
@@ -26,7 +49,7 @@ document.addEventListener("DOMContentLoaded", () => {
             const biobankInputs = document.querySelectorAll('input[name="dist_biobank_id[]"]');
             if (biobankInputs.length === 0) {
                 e.preventDefault();
-                alert("Please add at least one physical Biobank location.");
+                alert("Please add at least one physical Biobank location for storage.");
                 return false;
             }
         });
@@ -259,7 +282,7 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
-    /* --- 6. DYNAMIC TEMPLATES --- */
+    /* --- 6. DYNAMIC TEMPLATES (EAV) --- */
     function getFieldHTML(field) {
         const label = field.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
         
@@ -267,6 +290,14 @@ document.addEventListener("DOMContentLoaded", () => {
              return `
                 <label class="section-label text-primary">Organism / Custom Description <span class="text-danger">*</span></label>
                 <input type="text" name="${field}" class="form-control form-control-sm border-primary fw-bold" placeholder="Specify what this sample is..." required>
+            `;
+        }
+        if (field === 'is_empty_vector') {
+            return `
+                <div class="form-check form-switch mt-4">
+                    <input class="form-check-input border-info" type="checkbox" role="switch" id="isEmptyVectorSwitch" name="is_empty_vector" value="true" checked>
+                    <label class="form-check-label fw-bold text-info-emphasis" for="isEmptyVectorSwitch">This is an Empty Vector (No Insert)</label>
+                </div>
             `;
         }
         if (field.includes('sequence')) {
@@ -345,33 +376,90 @@ document.addEventListener("DOMContentLoaded", () => {
         const fieldsBox = document.getElementById('templateFields');
         const typeNameLabel = document.getElementById('templateTypeName');
 
-        // UPDATED: Aligned with the new nomenclature requested
+        // Biological Relations DOM Elements
+        const bioRelSection = document.getElementById('biologicalRelationshipsSection');
+        const hostBacteriumDiv = document.getElementById('hostBacteriumDiv');
+        const storedPlasmidsDiv = document.getElementById('storedPlasmidsDiv');
+        const infectingPhagesDiv = document.getElementById('infectingPhagesDiv');
+        const hostHelpText = document.getElementById('hostBacteriumHelp');
+
         const templates = {
-            "Phage (Virus)": ["genus", "morphotype", "taxonomy", "lifestyle", "isolation_source", "genome_type", "genome_size_bp", "temp_C", "ncbi_accession"],
-            "Bacterium (Host)": ["genus", "species", "strain", "genotype", "resistance_markers"],
-            "Vector Backbone": ["vector_type", "induction_system", "vector_size_bp", "resistance_markers"],
-            "Insert": ["insert_name", "insert_size_bp", "sequence"],
-            "Plasmid (Backbone + Insert)": ["construction_name", "actual_resistances", "origin_lab"], // Backbone/Insert FKs typically rendered via standard Django Form outside EAV, but fields added here if needed.
+            "Bacterium (Host)": ["official_name", "aliases", "genus", "species", "strain", "genotype", "isolation_source", "resistance_markers"],
+            "Phage (Virus)": ["official_name", "aliases", "phage_name", "genus", "morphotype", "taxonomy", "lifestyle", "isolation_source", "isolation_method", "genome_type", "genome_size_bp", "temp_C", "ncbi_accession"],
+            "Plasmid": [
+                "backbone_name", "backbone_aliases", "vector_type", "induction_system", "origin_of_replication", "backbone_size_bp", "backbone_resistance_markers", 
+                "is_empty_vector", "construction_name", "insert_name", "purpose", "insert_size_bp", "insert_resistance_markers"
+            ],
             "Other": ["custom_organism_name"]
         };
 
         if(typeInput && container && fieldsBox) {
             typeInput.addEventListener('change', function() {
-                const selectedType = this.options ? this.options[this.selectedIndex].text : this.value; 
+                const selectedType = this.value; 
                 fieldsBox.innerHTML = ''; 
                 
+                // 1. Setup EAV Fields
                 if (templates[selectedType]) {
                     container.classList.remove('d-none');
                     if (typeNameLabel) typeNameLabel.innerText = selectedType;
                     
                     templates[selectedType].forEach(field => {
                         const col = document.createElement('div');
-                        col.className = field === 'custom_organism_name' || field === 'sequence' ? 'col-md-6' : 'col-md-3';
+                        
+                        // Custom widths
+                        if(field === 'is_empty_vector') {
+                            col.className = 'col-md-12 border-bottom pb-3 mb-3';
+                        } else if(field.includes('name') || field === 'purpose' || field.includes('markers')) {
+                            col.className = 'col-md-4';
+                        } else {
+                            col.className = 'col-md-3';
+                        }
+
+                        // Plasmid Insert Toggling logic class
+                        if (selectedType === 'Plasmid' && (field.includes('insert') || field === 'construction_name' || field === 'purpose')) {
+                            col.classList.add('plasmid-insert-field', 'd-none');
+                        }
+
                         col.innerHTML = getFieldHTML(field);
                         fieldsBox.appendChild(col);
                     });
+
+                    // Add Listener for Empty Vector Toggle
+                    const emptySwitch = document.getElementById('isEmptyVectorSwitch');
+                    if (emptySwitch) {
+                        emptySwitch.addEventListener('change', function() {
+                            const insertFields = document.querySelectorAll('.plasmid-insert-field');
+                            insertFields.forEach(el => {
+                                if(this.checked) { el.classList.add('d-none'); }
+                                else { el.classList.remove('d-none'); }
+                            });
+                        });
+                    }
+
                 } else {
                     container.classList.add('d-none');
+                }
+
+                // 2. Setup Biological Relations Visibility
+                if(bioRelSection) {
+                    bioRelSection.classList.add('d-none');
+                    hostBacteriumDiv.classList.add('d-none');
+                    storedPlasmidsDiv.classList.add('d-none');
+                    infectingPhagesDiv.classList.add('d-none');
+
+                    if(selectedType === 'Bacterium (Host)') {
+                        bioRelSection.classList.remove('d-none');
+                        storedPlasmidsDiv.classList.remove('d-none');
+                        infectingPhagesDiv.classList.remove('d-none');
+                    } else if(selectedType === 'Phage (Virus)') {
+                        bioRelSection.classList.remove('d-none');
+                        hostBacteriumDiv.classList.remove('d-none');
+                        hostHelpText.innerText = "Search the bacteria this phage infects.";
+                    } else if(selectedType === 'Plasmid') {
+                        bioRelSection.classList.remove('d-none');
+                        hostBacteriumDiv.classList.remove('d-none');
+                        hostHelpText.innerText = "Search the bacteria where this plasmid is stored/propagated.";
+                    }
                 }
             });
         }
@@ -380,25 +468,35 @@ document.addEventListener("DOMContentLoaded", () => {
     /* --- 7. AUTO-PREFIXES DYNAMIC --- */
     function initPrefixLogic() {
         const typeInput = document.getElementById('sampleTypeInput');
-        const identifierInput = document.getElementById('id_external_identifier'); // Confirme se o ID do HTML bate com este (gerado pelo Django forms)
+        const identifierInput = document.getElementById('id_external_identifier');
+        const btnGenerate = document.getElementById('btnGenerateAutoId');
 
         const prefixMap = {
             "Bacterium (Host)": "BAC-",
             "Phage (Virus)": "PHA-",
-            "Vector Backbone": "BKB-",
-            "Insert": "INS-",
-            "Plasmid (Backbone + Insert)": "PLA-"
+            "Plasmid": "PLA-",
+            "Other": "SMP-"
         };
 
-        if (typeInput && identifierInput) {
-            typeInput.addEventListener('change', function() {
-                const selectedText = this.options ? this.options[this.selectedIndex].text : this.value;
-                const newPrefix = prefixMap[selectedText] || '';
+        if (typeInput && identifierInput && btnGenerate) {
+            btnGenerate.addEventListener('click', function() {
+                const selectedText = typeInput.value;
+                if (!selectedText) {
+                    alert("Please select a Sample Type first.");
+                    return;
+                }
+                const prefix = prefixMap[selectedText] || 'SMP-';
+                const year = new Date().getFullYear();
+                const randomHash = Math.floor(1000 + Math.random() * 9000); 
+                identifierInput.value = `${prefix}${year}-${randomHash}`;
+            });
 
+            typeInput.addEventListener('change', function() {
+                const selectedText = this.value;
+                const newPrefix = prefixMap[selectedText] || '';
                 const currentValue = identifierInput.value.trim();
                 const isJustPrefix = Object.values(prefixMap).some(p => p === currentValue);
 
-                // Só aplica o prefixo se o campo estiver vazio ou se o usuário ainda não tiver digitado nada além do prefixo antigo
                 if (currentValue === '' || isJustPrefix) {
                     identifierInput.value = newPrefix;
                 }

@@ -6,16 +6,20 @@ from .sample import Sample
 # 1. BACTERIA (Hosts)
 # =========================================================
 class Bacteria(Sample):
+    official_name = models.CharField(max_length=200, blank=True, null=True, help_text="Official/Standard Name")
+    aliases = models.TextField(blank=True, null=True, help_text="Alternative names or common aliases")
     genus = models.CharField(max_length=100, blank=True, null=True, help_text="Genus. Ex: Escherichia")
     species = models.CharField(max_length=150, help_text="Scientific name. Ex: Escherichia coli")
     strain = models.CharField(max_length=100, blank=True, null=True, help_text="Strain (Ex: BL21, MG1655)")
     genotype = models.TextField(blank=True, null=True, help_text="Genetic markers")
     resistance_markers = models.JSONField(default=list, blank=True, help_text="List of antibiotic resistance markers")
+    isolation_source = models.CharField(max_length=200, blank=True, null=True)
     additional_info = models.TextField(blank=True, null=True)
 
     class Meta:
         verbose_name = "Bacteria"
         verbose_name_plural = "Bacteria"
+
 
 # =========================================================
 # 2. PHAGES (Viruses)
@@ -38,11 +42,15 @@ class Phage(Sample):
         ('ssRNA', 'ssRNA'),
     ]
 
+    official_name = models.CharField(max_length=200, blank=True, null=True, help_text="Official/Standard Name")
+    aliases = models.TextField(blank=True, null=True, help_text="Alternative names or common aliases")
+    phage_name = models.CharField(max_length=100, blank=True, null=True, help_text="Phage Name. Ex: T4")
     genus = models.CharField(max_length=100, blank=True, null=True, help_text="Genus. Ex: Tequatrovirus")
     morphotype = models.CharField(max_length=50, choices=MORPHOTYPE_CHOICES, blank=True, null=True)
     taxonomy = models.CharField(max_length=100, blank=True, null=True, help_text="Ex: Autographiviridae, Straboviridae")
     lifestyle = models.CharField(max_length=50, choices=LIFESTYLE_CHOICES, blank=True, null=True)
     isolation_source = models.CharField(max_length=255, blank=True, null=True, help_text="Ex: Sewage, soil, clinical sample")
+    isolation_method = models.CharField(max_length=100, blank=True, null=True)
     genome_type = models.CharField(max_length=20, choices=GENOME_CHOICES, blank=True, null=True)
     genome_size_bp = models.PositiveIntegerField(blank=True, null=True, help_text="Size in base pairs (bp)")
     ncbi_accession = models.CharField(max_length=100, blank=True, null=True, help_text="GenBank Link/ID")
@@ -50,6 +58,7 @@ class Phage(Sample):
 
     class Meta:
         verbose_name = "Phage"
+
 
 # =========================================================
 # 3. HOST RANGE (The Junction Table / Graph)
@@ -60,15 +69,17 @@ class HostRange(models.Model):
     is_isolation_host = models.BooleanField(default=False, help_text="Defines if this is the isolation host bacteria")
     efficiency_eop = models.FloatField(blank=True, null=True, validators=[MinValueValidator(0.0)])
     plaque_morphology = models.ImageField(upload_to='plaque_images/', blank=True, null=True)
+    notes = models.TextField(blank=True, null=True, help_text="Specific details about this infection/interaction")
 
     class Meta:
         unique_together = ('phage', 'bacteria')
         verbose_name = "Host Range Interaction"
 
+
 # =========================================================
-# 4. VECTOR BACKBONES (Empty Vectors)
+# 4. PLASMIDS (Unified: Backbone + Insert)
 # =========================================================
-class VectorBackbone(Sample):
+class Plasmid(Sample):
     VECTOR_TYPE_CHOICES = [
         ('expression', 'Expression'),
         ('suicide', 'Suicide'),
@@ -76,51 +87,40 @@ class VectorBackbone(Sample):
         ('cloning', 'Cloning'),
     ]
 
-    name_official = models.CharField(max_length=100, help_text="Ex: pET28a(+)")
-    aliases = models.TextField(blank=True, null=True, help_text="Alternative names or aliases")
+    # --- Backbone Info ---
+    backbone_name = models.CharField(max_length=150, help_text="Ex: pET28a(+)")
+    backbone_aliases = models.TextField(blank=True, null=True, help_text="Alternative names")
     vector_type = models.CharField(max_length=50, choices=VECTOR_TYPE_CHOICES, blank=True, null=True)
-    resistance_markers = models.JSONField(default=list, blank=True)
     induction_system = models.CharField(max_length=100, blank=True, null=True, help_text="Ex: T7, lac, araBAD")
-    vector_size_bp = models.PositiveIntegerField(blank=True, null=True)
+    origin_of_replication = models.CharField(max_length=100, blank=True, null=True, help_text="Ex: pBR322, pUC")
+    backbone_size_bp = models.PositiveIntegerField(default=0)
+    backbone_resistance_markers = models.JSONField(default=list, blank=True)
 
-    class Meta:
-        verbose_name = "Vector Backbone"
+    # --- State Toggle ---
+    is_empty_vector = models.BooleanField(default=True, help_text="Is this circulating as an empty backbone?")
 
-# =========================================================
-# 5. INSERTS (Genes/Parts)
-# =========================================================
-class Insert(Sample):
-    insert_name = models.CharField(max_length=100, help_text="Name of the inserted gene/part. Ex: eGFP")
+    # --- Insert Info ---
+    insert_name = models.CharField(max_length=150, blank=True, null=True, help_text="Ex: eGFP")
+    purpose = models.CharField(max_length=255, blank=True, null=True, help_text="Purpose / Function of the insert")
     insert_size_bp = models.PositiveIntegerField(default=0)
-    sequence = models.TextField(blank=True, null=True, help_text="FASTA or raw sequence")
+    insert_resistance_markers = models.JSONField(default=list, blank=True)
+    construction_name = models.CharField(max_length=200, blank=True, null=True, help_text="Ex: pET28a-GFP")
 
-    class Meta:
-        verbose_name = "Insert"
-
-# =========================================================
-# 6. PLASMIDS (Backbone + Insert Assembly)
-# =========================================================
-class Plasmid(Sample):
-    backbone = models.ForeignKey(VectorBackbone, on_delete=models.PROTECT, related_name='plasmids')
-    
-    # ATUALIZADO AQUI para evitar colisão E006
-    insert_part = models.ForeignKey(Insert, on_delete=models.SET_NULL, null=True, blank=True, related_name='plasmids')
-    
-    construction_name = models.CharField(max_length=150, blank=True, null=True, help_text="Ex: pET28a-GFP. Leave empty to auto-fill with Backbone name if no insert.")
-    actual_resistances = models.JSONField(default=list, blank=True, help_text="Resistances of the final construction")
-    origin_lab = models.CharField(max_length=150, blank=True, null=True)
-    
-    final_size_bp = models.PositiveIntegerField(blank=True, null=True, help_text="Calculated automatically")
+    total_size_bp = models.PositiveIntegerField(null=True, blank=True)
 
     def save(self, *args, **kwargs):
-        v_size = self.backbone.vector_size_bp if self.backbone and self.backbone.vector_size_bp else 0
-        i_size = self.insert_part.insert_size_bp if self.insert_part and self.insert_part.insert_size_bp else 0
-        self.final_size_bp = v_size + i_size
-
-        if not self.insert_part and not self.construction_name and self.backbone:
-            self.construction_name = self.backbone.name_official
-
+        # Auto-calcula o tamanho total
+        self.total_size_bp = (self.backbone_size_bp or 0) + (self.insert_size_bp or 0)
+        
+        # Limpa os dados do inserto se o toggle for marcado como "Empty Vector"
+        if self.is_empty_vector:
+            self.insert_name = ""
+            self.purpose = ""
+            self.insert_size_bp = 0
+            self.insert_resistance_markers = []
+            self.construction_name = ""
+            
         super().save(*args, **kwargs)
 
     class Meta:
-        verbose_name = "Plasmid (Backbone + Insert)"
+        verbose_name = "Plasmid"
