@@ -27,8 +27,10 @@ from core.views.internal.backup import workspace_backup_view
 from core.views.internal.profile.views import profile_view
 from core.views.internal.calendar.views import calendar_view
 
-# 4. BIOBANKS & COLLECTIONS (Gestão de Acervos)
-# Nota: Rotas de membros foram movidas para o Admin ou Views dedicadas
+# 4. BIOBANKS & COLLECTIONS (Gestão Interna)
+# Certifique-se de que os nomes das funções (biobanks_list_view, etc) existem nos arquivos views.py
+from core.views.internal.biobanks.views import biobanks_list_view
+from core.views.internal.collections.views import collections_list_view
 
 # 5. SAMPLES (AMOSTRAS)
 from core.views.internal.samples.views import (
@@ -37,7 +39,7 @@ from core.views.internal.samples.views import (
     sample_create_view,
     export_samples_csv,
     sample_edit_view,
-    sample_relate_view,  # Função que processa o Novo Modal Múltiplo
+   sample_relate_view,  # Função que processa o Novo Modal Múltiplo
 )
 
 # 6. CHEMICALS (REAGENTES)
@@ -75,22 +77,23 @@ urlpatterns = [
     path("profile/", profile_view, name="user_profile"),
     path("calendar/", calendar_view, name="lab_calendar"),
 
+    # ---------------- BIOBANKS & COLLECTIONS (GESTÃO) ----------------
+    path("biobanks/", biobanks_list_view, name="biobanks_list"),
+    path("collections/", collections_list_view, name="collections_list"),
+
     # ---------------- SAMPLES (AMOSTRAS) ----------------
     path("samples/", samples_list_view, name="samples_list"),
     path("samples/add/", sample_create_view, name="sample_add"),
     path("samples/<int:sample_id>/print/", print_sample_label, name="print_sample_label"),
     path("samples/<int:sample_id>/edit/", sample_edit_view, name="sample_edit"),
-    
-    # Rota Vital: Processa as conexões (In/Out) e Host-Range vindas do modal
     path("samples/<int:sample_id>/relate/", sample_relate_view, name="sample_relate"),
-    
     path("samples/export/", export_samples_csv, name="export_samples_csv"),
 
     # ---------------- CHEMICALS (REAGENTES) ----------------
     path("chemicals/", chemicals_list_view, name="chemicals_list"),
     path("chemicals/add/", chemical_create_view, name="chemical_add"),
 
-    # ---------------- INTERNAL: MANAGEMENT ----------------
+    # ---------------- INTERNAL: MANAGEMENT (TAGS) ----------------
     path("tags/", tags_view, name="tags_view"),
     path("keywords/", keywords_view, name="keywords_view"),
     path("ajax/add_tag/", create_tag_ajax_view, name="ajax_add_tag"),

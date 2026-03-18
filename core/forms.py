@@ -1,11 +1,10 @@
 # core/forms.py
 from django import forms
 from core.models import Biobank, Collection, Tag, Sample
-# IMPORTS DOS NOVOS MODELOS BIOLÓGICOS
-from core.models import Bacteria, Phage, Vector, Construction
+from core.models import Bacteria, Phage, VectorBackbone, Insert, Plasmid
 
 # ----------------------------------------------------------
-# BIOBANK, COLLECTION & TAG FORMS (Mantidos originais)
+# BIOBANK, COLLECTION & TAG FORMS
 # ----------------------------------------------------------
 class BiobankForm(forms.ModelForm):
     class Meta:
@@ -25,7 +24,6 @@ class BiobankForm(forms.ModelForm):
 class CollectionForm(forms.ModelForm):
     class Meta:
         model = Collection
-        # REMOVIDO "biobank" daqui
         fields = ["name", "description", "is_public"]
         widgets = {
             "name": forms.TextInput(attrs={"class": "form-control", "placeholder": "Collection name"}),
@@ -43,12 +41,11 @@ class TagForm(forms.ModelForm):
         }
 
 # ----------------------------------------------------------
-# 1. SAMPLE FORM (O Formulário Pai)
+# 1. SAMPLE FORM
 # ----------------------------------------------------------
 class SampleForm(forms.ModelForm):
     class Meta:
         model = Sample
-        # ATUALIZADO: 'collection' mudou para 'collections'
         fields = [
             "sample_id", "sample_type", "organism_name", 
             "status", "is_public", "storage_location",
@@ -62,7 +59,6 @@ class SampleForm(forms.ModelForm):
             "is_public": forms.CheckboxInput(attrs={"class": "form-check-input"}),
             "storage_location": forms.TextInput(attrs={"class": "form-control"}),
             "biobank": forms.Select(attrs={"class": "form-select"}),
-            # ATUALIZADO: Alterado para SelectMultiple
             "collections": forms.SelectMultiple(attrs={"class": "form-select"}),
             "scientific_notes": forms.Textarea(attrs={"class": "form-control", "rows": 3}),
         }
@@ -116,14 +112,14 @@ class PhageForm(SampleForm):
             "ncbi_accession": forms.TextInput(attrs={"class": "form-control"}),
         }
 
-class VectorForm(SampleForm):
+class VectorBackboneForm(SampleForm):
     resistance_markers_text = forms.CharField(
         required=False, label="Marcadores de Resistência", 
         widget=forms.TextInput(attrs={"class": "form-control", "placeholder": "Ex: Ap100, Km50"})
     )
 
     class Meta(SampleForm.Meta):
-        model = Vector
+        model = VectorBackbone
         fields = SampleForm.Meta.fields + ["name_official", "vector_type", "induction_system", "vector_size_bp"]
         widgets = {
             **SampleForm.Meta.widgets,
@@ -147,24 +143,34 @@ class VectorForm(SampleForm):
         if commit: instance.save()
         return instance
 
-class ConstructionForm(SampleForm):
+class InsertForm(SampleForm):
     class Meta(SampleForm.Meta):
-        model = Construction
-        fields = SampleForm.Meta.fields + ["parent_vector", "construction_name", "insert_name", "insert_size_bp"]
+        model = Insert
+        fields = SampleForm.Meta.fields + ["insert_name", "insert_size_bp", "sequence"]
         widgets = {
             **SampleForm.Meta.widgets,
-            "parent_vector": forms.Select(attrs={"class": "form-select"}),
-            "construction_name": forms.TextInput(attrs={"class": "form-control"}),
             "insert_name": forms.TextInput(attrs={"class": "form-control"}),
             "insert_size_bp": forms.NumberInput(attrs={"class": "form-control"}),
+            "sequence": forms.Textarea(attrs={"class": "form-control", "rows": 3}),
         }
 
-# ==========================================================
-# FUNÇÃO DETETIVE: Descobre qual formulário usar
-# ==========================================================
+class PlasmidForm(SampleForm):
+    class Meta(SampleForm.Meta):
+        model = Plasmid
+        # ATUALIZADO AQUI
+        fields = SampleForm.Meta.fields + ["backbone", "insert_part", "construction_name", "origin_lab"]
+        widgets = {
+            **SampleForm.Meta.widgets,
+            "backbone": forms.Select(attrs={"class": "form-select"}),
+            "insert_part": forms.Select(attrs={"class": "form-select"}),
+            "construction_name": forms.TextInput(attrs={"class": "form-control", "placeholder": "Leave empty to auto-fill"}),
+            "origin_lab": forms.TextInput(attrs={"class": "form-control"}),
+        }
+
 def get_form_class_for_sample(sample_instance):
     if hasattr(sample_instance, 'bacteria'): return BacteriaForm
     if hasattr(sample_instance, 'phage'): return PhageForm
-    if hasattr(sample_instance, 'vector'): return VectorForm
-    if hasattr(sample_instance, 'construction'): return ConstructionForm
+    if hasattr(sample_instance, 'vectorbackbone'): return VectorBackboneForm
+    if hasattr(sample_instance, 'insert'): return InsertForm
+    if hasattr(sample_instance, 'plasmid'): return PlasmidForm
     return SampleForm

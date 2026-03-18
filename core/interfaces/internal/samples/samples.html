@@ -36,7 +36,7 @@
                             <label class="section-label">Sample ID / Barcode <span class="text-danger">*</span></label>
                             <div class="input-group">
                                 <span class="input-group-text bg-white text-muted"><i class="bi bi-upc-scan"></i></span>
-                                <input type="text" name="sample_id" class="form-control fw-bold" placeholder="Ex: SMP-2026-001" required>
+                                <input type="text" name="sample_id" id="id_external_identifier" class="form-control fw-bold" placeholder="Ex: SMP-2026-001" required>
                             </div>
                         </div>
 
@@ -44,10 +44,11 @@
                             <label class="section-label">Sample Type <span class="text-danger">*</span></label>
                             <select class="form-select text-dark fw-bold border-primary-subtle" name="sample_type" id="sampleTypeInput" required>
                                 <option value="" selected disabled>Select type...</option>
+                                <option value="Bacterium (Host)">Bacterium (Host)</option>
                                 <option value="Phage (Virus)">Phage (Virus)</option>
-                                <option value="Bacteria (Host)">Bacteria (Host)</option>
-                                <option value="Vector (Backbone)">Vector (Backbone)</option>
-                                <option value="Construction (Plasmid)">Construction (Plasmid)</option>
+                                <option value="Vector Backbone">Vector Backbone</option>
+                                <option value="Insert">Insert</option>
+                                <option value="Plasmid (Backbone + Insert)">Plasmid (Backbone + Insert)</option>
                                 <option value="Other">Other</option>
                             </select>
                         </div>
@@ -59,6 +60,36 @@
                             <div id="dynamicStorageContainer" class="form-control d-flex flex-wrap align-items-center gap-1 bg-light" style="min-height: 38px; cursor: text;">
                                 <input type="hidden" name="storage_location" id="storage_location_hidden">
                                 <input type="text" id="storageInputVisual" class="border-0 p-0 m-0 bg-transparent" style="outline: none; flex-grow: 1; min-width: 150px;" placeholder="Add level and press Enter...">
+                            </div>
+                        </div>
+
+                        <div id="plasmidAssemblySection" class="col-md-12 border-start border-3 border-info ps-4 mt-2 d-none">
+                            <div class="p-3 bg-info-subtle rounded border border-info">
+                                <label class="section-label text-info-emphasis mb-3"><i class="bi bi-puzzle me-2"></i>Plasmid Assembly Parts</label>
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <label class="small fw-bold text-dark">Vector Backbone <span class="text-danger">*</span></label>
+                                        <select name="backbone" class="form-select border-info">
+                                            <option value="">Select an empty backbone...</option>
+                                            {% for s in all_samples %}
+                                                {% if s.sample_type == 'Vector Backbone' %}
+                                                    <option value="{{ s.id }}">{{ s.organism_name }} ({{ s.sample_id }})</option>
+                                                {% endif %}
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="small fw-bold text-dark">Insert Part (Optional)</label>
+                                        <select name="insert_part" class="form-select border-info">
+                                            <option value="">None (Empty Vector Circulation)</option>
+                                            {% for s in all_samples %}
+                                                {% if s.sample_type == 'Insert' %}
+                                                    <option value="{{ s.id }}">{{ s.organism_name }} ({{ s.sample_id }})</option>
+                                                {% endif %}
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                         
@@ -208,6 +239,22 @@
 <script>
     document.addEventListener("DOMContentLoaded", function() {
         
+        // =========================================================
+        // TOGGLE PLASMID ASSEMBLY SECTION
+        // =========================================================
+        const typeInput = document.getElementById('sampleTypeInput');
+        const plasmidSection = document.getElementById('plasmidAssemblySection');
+        
+        if(typeInput && plasmidSection) {
+            typeInput.addEventListener('change', function() {
+                if(this.value === 'Plasmid (Backbone + Insert)') {
+                    plasmidSection.classList.remove('d-none');
+                } else {
+                    plasmidSection.classList.add('d-none');
+                }
+            });
+        }
+
         // =========================================================
         // PREVENIR ENVIO DO FORMULÁRIO COM 'ENTER'
         // =========================================================

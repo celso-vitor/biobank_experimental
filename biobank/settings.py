@@ -15,12 +15,24 @@ env = environ.Env(
 environ.Env.read_env(os.path.join(BASE_DIR, '.env'))
 
 # =========================
-# SEGURANÇA / DEBUG
+# SEGURANÇA / DEBUG / PROXY
 # =========================
-# Agora busca do .env, se não achar usa a dev-secret-key
 SECRET_KEY = env('SECRET_KEY', default="dev-secret-key") 
 DEBUG = env('DEBUG')
 ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=['*'])
+
+FORCE_SCRIPT_NAME = '/biobank'
+
+# ---> ADICIONE ESTAS DUAS LINHAS ABAIXO <---
+
+# 1. Autoriza o domínio da USP a enviar formulários POST (Resolve o Erro 403)
+CSRF_TRUSTED_ORIGINS = ['https://davinci.icb.usp.br']
+
+# 2. Avisa o Django que o Apache já cuidou do cadeado de segurança (HTTPS)
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
+# Avisa o Django que ele está rodando atrás de um subdiretório no Apache
+FORCE_SCRIPT_NAME = '/biobank'
 
 # =========================
 # APLICAÇÕES
@@ -38,7 +50,7 @@ INSTALLED_APPS = [
     "core.apps.CoreConfig",
 
     # 4. Utilitários Externos
-    "import_export",  # <--- AQUI ESTÁ A CORREÇÃO!
+    "import_export",  
     "django_extensions",
     "rest_framework",
     "django_filters",
@@ -94,7 +106,7 @@ DATABASES = {
 # =========================
 # STATIC FILES (CSS, JS, IMAGES)
 # =========================
-STATIC_URL = "/static/"
+STATIC_URL = "/biobank/static/"
 STATICFILES_DIRS = [
     BASE_DIR / "core" / "interfaces",
     BASE_DIR / "static",
@@ -104,7 +116,7 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 # =========================
 # MEDIA (UPLOADS DE AMOSTRAS)
 # =========================
-MEDIA_URL = "/data/"
+MEDIA_URL = "/biobank/data/"
 MEDIA_ROOT = BASE_DIR / "data"
 
 # =========================
@@ -118,10 +130,10 @@ USE_TZ = True
 # =========================
 # AUTENTICAÇÃO
 # =========================
-LOGIN_URL = "/login/"
-LOGOUT_URL = "/logout/"
-LOGIN_REDIRECT_URL = "/"
-LOGOUT_REDIRECT_URL = "/login/"
+LOGIN_URL = "/biobank/login/"
+LOGOUT_URL = "/biobank/logout/"
+LOGIN_REDIRECT_URL = "/biobank/"
+LOGOUT_REDIRECT_URL = "/biobank/login/"
 
 # =========================
 # DEFAULTS

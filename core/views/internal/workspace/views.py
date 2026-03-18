@@ -13,9 +13,9 @@ from core.models.collections.collection import Collection
 from core.models.samples.sample import Sample
 from core.models.events.model import Event
 
-# View Imports for Routing
-from core.views.internal.biobanks.views import biobanks_view
-from core.views.internal.collections.views import collections_view
+# CORRIGIDO: Nomes das Views atualizados para os novos nomes de lista
+from core.views.internal.biobanks.views import biobanks_list_view
+from core.views.internal.collections.views import collections_list_view
 from core.views.internal.samples.views import samples_list_view
 from core.views.internal.tags.views import (
     tags_view, search_view, create_tag_view, edit_tag_view, delete_tag_view
@@ -32,10 +32,11 @@ def home(request):
     """
     page = request.GET.get("page", "workspace")
 
+    # CORRIGIDO: Referências no dicionário ROUTES atualizadas
     ROUTES = {
         "workspace": workspace_view,
-        "biobanks": biobanks_view,
-        "collections": collections_view,
+        "biobanks": biobanks_list_view,    # Nome atualizado
+        "collections": collections_list_view, # Nome atualizado
         "samples": samples_list_view,
         "tags": tags_view,
         "search_tags": search_view,
@@ -68,7 +69,7 @@ def workspace_view(request):
         status__in=['pending', 'qc']
     ).count()
     
-    # New samples in the last 30 days
+   # New samples in the last 30 days
     last_30_days = timezone.now() - timedelta(days=30)
     new_samples = Sample.objects.filter(
         is_active=True, 
@@ -89,7 +90,6 @@ def workspace_view(request):
     chart_data = [item['total'] for item in type_distribution]
 
     # --- 3. RECENT ACTIVITY (Audit Trail) ---
-    # Fetch latest events recorded in the system
     recent_activity = (
         Event.objects.all()
         .select_related('performed_by', 'sample')

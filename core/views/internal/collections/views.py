@@ -21,7 +21,7 @@ from core.permissions.collections import (
 )
 
 @login_required
-def collections_view(request):
+def collections_list_view(request): # Nome alterado para bater com urls.py
     user = request.user
     action = request.POST.get("action") if request.method == "POST" else None
 
@@ -29,7 +29,6 @@ def collections_view(request):
     if action == "add_collection":
         form = CollectionForm(request.POST)
 
-        # Removemos a validação obrigatória de um único biobanco se o formulário ainda estiver usando ForeignKey
         if form.is_valid():
             try:
                 with transaction.atomic():
@@ -38,16 +37,12 @@ def collections_view(request):
                     collection.is_active = True
                     collection.save()
 
-                    # --- NOVO: Lógica de Múltiplos Biobancos ---
-                    # Captura a string de IDs (ex: "1,4,7") enviada pelo sistema de Chips
+                    # --- Lógica de Múltiplos Biobancos ---
                     bb_ids_raw = request.POST.get("biobanks_ids", "")
                     bb_ids = [bb_id for bb_id in bb_ids_raw.split(",") if bb_id.strip()]
                     
                     if bb_ids:
-                        # Se o seu modelo for ManyToManyField:
                         collection.biobanks.set(bb_ids)
-                        # Se ainda estiver usando ForeignKey (campo 'biobank'), 
-                        # esta lógica salvaria apenas o último, por isso garanta que mudou para MTM no models.py
                     
                     # --- Tags ---
                     selected_tags = request.POST.getlist("tags")
@@ -65,15 +60,15 @@ def collections_view(request):
                             collection.keywords.add(kv)
 
                     messages.success(request, "Collection created successfully!")
-                    return redirect("/?page=collections")
+                    return redirect("collections_list") # CORRIGIDO: Nome da rota
 
             except Exception as e:
-                messages.error(request, f"Error creating Collection: {e}")
-                return redirect("/?page=collections")
+                messages.error(request, f"Error creating Collection: {e}") # CORRIGIDO: Indentação
+                return redirect("collections_list") # CORRIGIDO: Nome da rota
         else:
             errors = form.errors.as_text()
             messages.error(request, f"Invalid data: {errors}")
-            return redirect("/?page=collections")
+            return redirect("collections_list") # CORRIGIDO: Nome da rota
 
     # 2. DEACTIVATE
     elif action == "deactivate_collection":
@@ -86,12 +81,11 @@ def collections_view(request):
         collection.is_active = False
         collection.save(update_fields=["is_active"])
         messages.success(request, "Collection deactivated successfully.")
-        return redirect("/?page=collections")
+        return redirect("collections_list") # CORRIGIDO: Nome da rota
 
     # 3. LISTAGEM (GET)
     ctx = base_context(request)
     
-    # Passamos todos os biobancos para o sistema de busca no frontend
     ctx["biobanks"] = Biobank.objects.filter(is_active=True).order_by("name")
     ctx["all_tags"] = Tag.objects.all().order_by("name")
     ctx["collection_form"] = CollectionForm()
@@ -101,7 +95,6 @@ def collections_view(request):
     collections_qs = Collection.objects.filter(is_active=True)
     
     if biobank_id:
-        # Ajustado para filtrar em múltiplos biobancos (usando o plural se for MTM)
         collections_qs = collections_qs.filter(biobanks__id=biobank_id)
 
     visible_collections = []

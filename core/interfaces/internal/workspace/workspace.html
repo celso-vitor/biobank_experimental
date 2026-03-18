@@ -38,7 +38,6 @@
         border-radius: 12px;
         background: white;
         text-decoration: none;
-        color: #495057;
         transition: all 0.2s;
         height: 100%;
     }
@@ -105,7 +104,7 @@
             <a href="{% url 'workspace_backup' %}" class="btn btn-outline-secondary d-flex align-items-center shadow-sm">
                 <i class="bi bi-hdd-network me-2"></i> System Backup
             </a>
-            <a href="/admin/" target="_blank" class="btn btn-dark d-flex align-items-center shadow-sm">
+            <a href="{% url 'admin:index' %}" target="_blank" class="btn btn-dark d-flex align-items-center shadow-sm">
                 <i class="bi bi-shield-lock-fill me-2"></i> Admin Panel
             </a>
         </div>
@@ -181,13 +180,15 @@
                             <small class="text-muted mt-1 text-center">Add new specimen</small>
                         </a>
                     </div>
+                    
                     <div class="col-md-4">
-                        <a href="/?page=collections" class="action-btn shadow-sm">
+                        <a href="{% url 'collections_list' %}" class="action-btn shadow-sm">
                             <i class="bi bi-folder-plus text-success"></i>
                             <span class="fw-bold">New Collection</span>
                             <small class="text-muted mt-1 text-center">Create project</small>
                         </a>
                     </div>
+                    
                     <div class="col-md-4">
                         <a href="{% url 'notebook_index' %}" class="action-btn shadow-sm">
                             <i class="bi bi-journal-text text-info"></i>
@@ -227,7 +228,7 @@
                             {% for event in stats.recent_activity|slice:":5" %}
                             <div class="agenda-item">
                                 <div class="agenda-time">{{ event.timestamp|date:"H:i" }}</div>
-                                <div class="agenda-marker 
+                                <div class="agenda-marker
                                     {% if event.event_type == 'entry' %}bg-success
                                     {% elif event.event_type == 'qc_check' %}bg-warning
                                     {% else %}bg-primary{% endif %}">
@@ -254,7 +255,7 @@
                 </div>
             </div>
 
-            <div class="card shadow-sm border-0">
+           <div class="card shadow-sm border-0">
                 <div class="card-body">
                     <h6 class="fw-bold text-secondary small text-uppercase mb-3">System Status</h6>
                     <div class="d-flex justify-content-between align-items-center mb-2">

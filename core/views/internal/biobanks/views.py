@@ -13,7 +13,7 @@ from core.models.keywords.model import Keyword, KeywordValue
 from core.permissions.biobanks import can_view_biobank, can_edit_biobank
 
 @login_required
-def biobanks_view(request):
+def biobanks_list_view(request): # Nome alterado para bater com o urls.py
     user = request.user
     action = request.POST.get("action")
 
@@ -22,7 +22,7 @@ def biobanks_view(request):
         form = BiobankForm(request.POST)
         if not form.is_valid():
             messages.error(request, "Invalid biobank data.")
-            return redirect("/?page=biobanks")
+            return redirect("biobanks_list") # CORRIGIDO: Usando o nome da rota
 
         try:
             with transaction.atomic():
@@ -37,7 +37,9 @@ def biobanks_view(request):
                 for raw in request.POST.getlist("keyword_pairs"):
                     if ":::" not in raw: continue
                     key, value = map(str.strip, raw.split(":::"))
-                    if not key or not value: continue
+                    
+                    if not key or not value: continue # CORRIGIDO: Indentação ajustada
+                    
                     keyword_obj, _ = Keyword.objects.get_or_create(name=key)
                     kv, _ = KeywordValue.objects.get_or_create(keyword=keyword_obj, value=value)
                     biobank.keywords.add(kv)
@@ -45,11 +47,10 @@ def biobanks_view(request):
                 messages.success(request, "Biobank created successfully!")
         except Exception as e:
             messages.error(request, f"Error creating biobank: {e}")
-        return redirect("/?page=biobanks")
+        return redirect("biobanks_list") # CORRIGIDO: Usando o nome da rota
 
-    # 2. ACTION: DEACTIVATE BIOBANK (Fixed the 'biobank_id' mismatch)
+    # 2. ACTION: DEACTIVATE BIOBANK
     if request.method == "POST" and action == "deactivate_biobank":
-        # Capturamos o biobank_id enviado pelo HTML
         bb_id = request.POST.get("biobank_id")
         biobank = get_object_or_404(Biobank, id=bb_id)
         
@@ -59,7 +60,7 @@ def biobanks_view(request):
         biobank.is_active = False
         biobank.save(update_fields=["is_active"])
         messages.success(request, "Biobank deactivated successfully.")
-        return redirect("/?page=biobanks")
+        return redirect("biobanks_list") # CORRIGIDO: Usando o nome da rota
 
     # 3. ACTION: PERMANENT DELETE (Administrative only)
     if request.method == "POST" and action == "delete_biobank":
@@ -70,15 +71,14 @@ def biobanks_view(request):
         biobank = get_object_or_404(Biobank, id=bb_id)
         biobank.delete()
         messages.success(request, "Biobank permanently deleted.")
-        return redirect("/?page=biobanks")
+        return redirect("biobanks_list") # CORRIGIDO: Usando o nome da rota
 
     # 4. VIEW LOGIC (GET)
     ctx = base_context(request)
     ctx["biobank_form"] = BiobankForm()
     ctx["all_tags"] = Tag.objects.all().order_by("name")
 
-    # Filter biobanks that the user is allowed to see
-    # Only show active biobanks in the general listing
+    # Filtra biobanks que o usuário pode ver
     visible_biobanks = [
         b for b in Biobank.objects.filter(is_active=True).order_by("name") 
         if can_view_biobank(user, b)
@@ -89,4 +89,5 @@ def biobanks_view(request):
         b.can_manage_members = False
 
     ctx["biobanks"] = visible_biobanks
+    # Certifique-se de que este template existe no caminho abaixo:
     return render(request, "internal/biobanks/biobanks.html", ctx)

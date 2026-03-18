@@ -18,13 +18,11 @@ document.addEventListener("DOMContentLoaded", () => {
     const mainSampleForm = document.getElementById("mainSampleForm");
     if (mainSampleForm) {
         mainSampleForm.addEventListener("submit", function(e) {
-            // Save Quill Editor content
             if (quill) {
                 const notesInput = document.getElementById("scientific_notes_input");
                 if(notesInput) notesInput.value = quill.root.innerHTML;
             }
 
-            // Validate if at least one biobank was selected
             const biobankInputs = document.querySelectorAll('input[name="dist_biobank_id[]"]');
             if (biobankInputs.length === 0) {
                 e.preventDefault();
@@ -34,7 +32,7 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
-    /* --- 2. TAGS (If modals are used in the future) --- */
+    /* --- 2. TAGS --- */
     function initTagSystem() {
         document.querySelectorAll(".selectable-tag").forEach(chip => {
             if (chip.dataset.bound) return;
@@ -167,7 +165,6 @@ document.addEventListener("DOMContentLoaded", () => {
                 container.insertBefore(arrow, textInput);
             });
 
-            // Send to Django in a clean format: "Freezer 1 > Box A"
             hiddenInput.value = levels.join(" > ");
             textInput.focus();
         }
@@ -262,22 +259,26 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
-    /* --- 6. DYNAMIC TEMPLATES (With Genus and Custom Other) --- */
+    /* --- 6. DYNAMIC TEMPLATES --- */
     function getFieldHTML(field) {
         const label = field.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
         
-        // Custom "Other" handling
         if (field === 'custom_organism_name') {
              return `
                 <label class="section-label text-primary">Organism / Custom Description <span class="text-danger">*</span></label>
                 <input type="text" name="${field}" class="form-control form-control-sm border-primary fw-bold" placeholder="Specify what this sample is..." required>
             `;
         }
-
+        if (field.includes('sequence')) {
+            return `
+                <label class="section-label">${label}</label>
+                <textarea name="${field}" class="form-control form-control-sm bg-white" placeholder="FASTA sequence..."></textarea>
+            `;
+        }
         if (field.includes('size_bp')) {
             return `
                 <label class="section-label">${label}</label>
-                <input type="number" name="${field}" class="form-control form-control-sm bg-white" placeholder="Ex: 45000" min="0">
+                <input type="number" name="${field}" class="form-control form-control-sm bg-white" placeholder="Ex: 4500" min="0">
             `;
         }
         if (field === 'temp_C') {
@@ -344,18 +345,19 @@ document.addEventListener("DOMContentLoaded", () => {
         const fieldsBox = document.getElementById('templateFields');
         const typeNameLabel = document.getElementById('templateTypeName');
 
-        // ADDED: "genus" for Phage and Bacteria. "custom_organism_name" for Other.
+        // UPDATED: Aligned with the new nomenclature requested
         const templates = {
             "Phage (Virus)": ["genus", "morphotype", "taxonomy", "lifestyle", "isolation_source", "genome_type", "genome_size_bp", "temp_C", "ncbi_accession"],
-            "Bacteria (Host)": ["genus", "species", "strain", "genotype", "resistance_markers"],
-            "Vector (Backbone)": ["vector_type", "induction_system", "vector_size_bp", "resistance_markers"],
-            "Construction (Plasmid)": ["construction_name", "insert_name", "insert_size_bp"],
+            "Bacterium (Host)": ["genus", "species", "strain", "genotype", "resistance_markers"],
+            "Vector Backbone": ["vector_type", "induction_system", "vector_size_bp", "resistance_markers"],
+            "Insert": ["insert_name", "insert_size_bp", "sequence"],
+            "Plasmid (Backbone + Insert)": ["construction_name", "actual_resistances", "origin_lab"], // Backbone/Insert FKs typically rendered via standard Django Form outside EAV, but fields added here if needed.
             "Other": ["custom_organism_name"]
         };
 
         if(typeInput && container && fieldsBox) {
             typeInput.addEventListener('change', function() {
-                const selectedType = this.value; 
+                const selectedType = this.options ? this.options[this.selectedIndex].text : this.value; 
                 fieldsBox.innerHTML = ''; 
                 
                 if (templates[selectedType]) {
@@ -364,13 +366,41 @@ document.addEventListener("DOMContentLoaded", () => {
                     
                     templates[selectedType].forEach(field => {
                         const col = document.createElement('div');
-                        // Make the custom text box larger for better UX
-                        col.className = field === 'custom_organism_name' ? 'col-md-6' : 'col-md-3';
+                        col.className = field === 'custom_organism_name' || field === 'sequence' ? 'col-md-6' : 'col-md-3';
                         col.innerHTML = getFieldHTML(field);
                         fieldsBox.appendChild(col);
                     });
                 } else {
                     container.classList.add('d-none');
+                }
+            });
+        }
+    }
+
+    /* --- 7. AUTO-PREFIXES DYNAMIC --- */
+    function initPrefixLogic() {
+        const typeInput = document.getElementById('sampleTypeInput');
+        const identifierInput = document.getElementById('id_external_identifier'); // Confirme se o ID do HTML bate com este (gerado pelo Django forms)
+
+        const prefixMap = {
+            "Bacterium (Host)": "BAC-",
+            "Phage (Virus)": "PHA-",
+            "Vector Backbone": "BKB-",
+            "Insert": "INS-",
+            "Plasmid (Backbone + Insert)": "PLA-"
+        };
+
+        if (typeInput && identifierInput) {
+            typeInput.addEventListener('change', function() {
+                const selectedText = this.options ? this.options[this.selectedIndex].text : this.value;
+                const newPrefix = prefixMap[selectedText] || '';
+
+                const currentValue = identifierInput.value.trim();
+                const isJustPrefix = Object.values(prefixMap).some(p => p === currentValue);
+
+                // Só aplica o prefixo se o campo estiver vazio ou se o usuário ainda não tiver digitado nada além do prefixo antigo
+                if (currentValue === '' || isJustPrefix) {
+                    identifierInput.value = newPrefix;
                 }
             });
         }
@@ -383,4 +413,5 @@ document.addEventListener("DOMContentLoaded", () => {
     initDynamicStorage();
     initBiobankLogic();
     initDynamicTemplates();
+    initPrefixLogic();
 });

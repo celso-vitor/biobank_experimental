@@ -48,8 +48,6 @@ class Phage(Sample):
     ncbi_accession = models.CharField(max_length=100, blank=True, null=True, help_text="GenBank Link/ID")
     temp_C = models.DecimalField(max_digits=4, decimal_places=1, blank=True, null=True, help_text="Optimal growth temperature")
 
-    # Files have been moved to the generic SampleFile system!
-
     class Meta:
         verbose_name = "Phage"
 
@@ -61,8 +59,6 @@ class HostRange(models.Model):
     bacteria = models.ForeignKey(Bacteria, on_delete=models.CASCADE, related_name='phage_interactions')
     is_isolation_host = models.BooleanField(default=False, help_text="Defines if this is the isolation host bacteria")
     efficiency_eop = models.FloatField(blank=True, null=True, validators=[MinValueValidator(0.0)])
-    
-    # It makes sense to keep this here, since the plaque image belongs to the *interaction* and not just the phage!
     plaque_morphology = models.ImageField(upload_to='plaque_images/', blank=True, null=True)
 
     class Meta:
@@ -70,9 +66,9 @@ class HostRange(models.Model):
         verbose_name = "Host Range Interaction"
 
 # =========================================================
-# 4. VECTORS (Backbones / Catalog)
+# 4. VECTOR BACKBONES (Empty Vectors)
 # =========================================================
-class Vector(Sample):
+class VectorBackbone(Sample):
     VECTOR_TYPE_CHOICES = [
         ('expression', 'Expression'),
         ('suicide', 'Suicide'),
@@ -87,30 +83,44 @@ class Vector(Sample):
     induction_system = models.CharField(max_length=100, blank=True, null=True, help_text="Ex: T7, lac, araBAD")
     vector_size_bp = models.PositiveIntegerField(blank=True, null=True)
 
-    # The default_host relationship was moved to the Traceability network (SampleRelationship)
+    class Meta:
+        verbose_name = "Vector Backbone"
+
+# =========================================================
+# 5. INSERTS (Genes/Parts)
+# =========================================================
+class Insert(Sample):
+    insert_name = models.CharField(max_length=100, help_text="Name of the inserted gene/part. Ex: eGFP")
+    insert_size_bp = models.PositiveIntegerField(default=0)
+    sequence = models.TextField(blank=True, null=True, help_text="FASTA or raw sequence")
 
     class Meta:
-        verbose_name = "Vector"
+        verbose_name = "Insert"
 
 # =========================================================
-# 5. CONSTRUCTIONS
+# 6. PLASMIDS (Backbone + Insert Assembly)
 # =========================================================
-class Construction(Sample):
-    parent_vector = models.ForeignKey(Vector, on_delete=models.PROTECT, related_name='constructions')
-    construction_name = models.CharField(max_length=150, help_text="Ex: pET28a-GFP")
-    insert_name = models.CharField(max_length=100, blank=True, null=True, help_text="Name of the inserted gene/part. Ex: eGFP")
-    insert_size_bp = models.PositiveIntegerField(default=0)
+class Plasmid(Sample):
+    backbone = models.ForeignKey(VectorBackbone, on_delete=models.PROTECT, related_name='plasmids')
+    
+    # ATUALIZADO AQUI para evitar colisão E006
+    insert_part = models.ForeignKey(Insert, on_delete=models.SET_NULL, null=True, blank=True, related_name='plasmids')
+    
+    construction_name = models.CharField(max_length=150, blank=True, null=True, help_text="Ex: pET28a-GFP. Leave empty to auto-fill with Backbone name if no insert.")
     actual_resistances = models.JSONField(default=list, blank=True, help_text="Resistances of the final construction")
     origin_lab = models.CharField(max_length=150, blank=True, null=True)
     
-    # Physical field to allow quick DB filters (Ex: order by size)
     final_size_bp = models.PositiveIntegerField(blank=True, null=True, help_text="Calculated automatically")
 
     def save(self, *args, **kwargs):
-        v_size = self.parent_vector.vector_size_bp if self.parent_vector and self.parent_vector.vector_size_bp else 0
-        i_size = self.insert_size_bp if self.insert_size_bp else 0
+        v_size = self.backbone.vector_size_bp if self.backbone and self.backbone.vector_size_bp else 0
+        i_size = self.insert_part.insert_size_bp if self.insert_part and self.insert_part.insert_size_bp else 0
         self.final_size_bp = v_size + i_size
+
+        if not self.insert_part and not self.construction_name and self.backbone:
+            self.construction_name = self.backbone.name_official
+
         super().save(*args, **kwargs)
 
     class Meta:
-        verbose_name = "Construction"
+        verbose_name = "Plasmid (Backbone + Insert)"

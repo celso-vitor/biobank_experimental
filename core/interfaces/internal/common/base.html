@@ -6,13 +6,9 @@
     <title>{% block title %}Biobank LIMS{% endblock %}</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
-    <!-- Bootstrap -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.css" rel="stylesheet">
 
-    <!-- Bootstrap Icons -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.css" rel="stylesheet">	
-
-    <!-- Internal CSS -->
     <link rel="stylesheet" href="{% static 'internal/common/base.css' %}">
     <link rel="stylesheet" href="{% static 'internal/common/chips.css' %}">
 
@@ -21,7 +17,6 @@
 
 <body class="lims-layout">
 
-<!-- SIDEBAR -->
 <aside class="lims-sidebar" id="app-sidebar">
 
     <div class="sidebar-top">
@@ -37,7 +32,7 @@
 
     <nav class="sidebar-nav">
 
-        <div class="nav-section-label">Inventory</div>
+       <div class="nav-section-label">Inventory</div>
 
         <a href="{% url 'workspace' %}"
            class="nav-link {% if request.resolver_match.url_name == 'workspace' %}active{% endif %}">
@@ -45,26 +40,29 @@
             <span class="nav-label">Workspace</span>
         </a>
 
-        <a href="/?page=biobanks" class="nav-link">
+        <a href="{% url 'biobanks_list' %}" 
+           class="nav-link {% if 'biobanks' in request.path %}active{% endif %}">
             <i class="bi bi-building"></i>
             <span class="nav-label">Biobanks</span>
         </a>
 
-        <a href="/?page=collections" class="nav-link">
+        <a href="{% url 'collections_list' %}" 
+           class="nav-link {% if 'collections' in request.path and not 'public' in request.path %}active{% endif %}">
             <i class="bi bi-collection"></i>
             <span class="nav-label">Collections</span>
         </a>
 
-        <a href="/?page=samples" class="nav-link">
+        <a href="{% url 'samples_list' %}" 
+           class="nav-link {% if 'samples' in request.path %}active{% endif %}">
             <i class="bi bi-droplet"></i>
             <span class="nav-label">Samples</span>
         </a>
 
-	<a href="{% url 'chemicals_list' %}"
-   	   class="nav-link {% if 'chemicals' in request.path %}active{% endif %}">
-    	    <i class="bi bi-flask"></i>
-    	    <span class="nav-label">Chemicals</span>
-    	</a>
+        <a href="{% url 'chemicals_list' %}"
+           class="nav-link {% if 'chemicals' in request.path %}active{% endif %}">
+            <i class="bi bi-flask"></i>
+            <span class="nav-label">Chemicals</span>
+        </a>
 
         <hr class="sidebar-divider">
 
@@ -96,7 +94,6 @@
 
     </nav>
 
-    <!-- EDITED FOOTER -->
     <div class="sidebar-footer"
          style="text-align:center;
                 font-size:1.15rem;
@@ -107,7 +104,6 @@
 
 </aside>
 
-<!-- MAIN -->
 <div class="lims-main">
 
     <header class="lims-topbar">
@@ -139,7 +135,7 @@
                     </a>
                 </li>
 
-                <li><hr class="dropdown-divider"></li>
+              <li><hr class="dropdown-divider"></li>
 
                 <li>
                     <form method="post"
@@ -181,7 +177,6 @@
 
 </div>
 
-<!-- SCRIPTS -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script src="{% static 'internal/common/base.js' %}"></script>
 

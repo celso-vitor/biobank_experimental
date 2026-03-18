@@ -21,8 +21,9 @@ from core.models import (
     KeywordValue,
     Bacteria,
     Phage,
-    Vector,
-    Construction
+    VectorBackbone,
+    Insert,
+    Plasmid
 )
 from core.models.events.model import Event
 from core.models.samples.relationship import SampleRelationship
@@ -83,8 +84,7 @@ def sample_create_view(request):
                 storage_location = request.POST.get("storage_location", "")
                 is_public = request.POST.get("is_public") == "true" or request.POST.get("is_public") == "on"
                 
-                # --- NEW: Dynamic assembly of organism_name ---
-                if sample_type == "Bacteria (Host)":
+                if sample_type == "Bacterium (Host)":
                     genus = request.POST.get("genus", "").strip()
                     species = request.POST.get("species", "").strip()
                     strain = request.POST.get("strain", "").strip()
@@ -95,18 +95,19 @@ def sample_create_view(request):
                     taxonomy = request.POST.get("taxonomy", "").strip()
                     organism_name = f"{genus} {taxonomy}".strip()
                     
-                elif sample_type == "Vector (Backbone)":
+                elif sample_type == "Vector Backbone":
                     organism_name = request.POST.get("name_official", "").strip()
                     
-                elif sample_type == "Construction (Plasmid)":
+                elif sample_type == "Insert":
+                    organism_name = request.POST.get("insert_name", "").strip()
+
+                elif sample_type == "Plasmid (Backbone + Insert)":
                     organism_name = request.POST.get("construction_name", "").strip()
                     
                 elif sample_type == "Other":
-                    # Correctly capture the custom organism name for 'Other' type
                     organism_name = request.POST.get("custom_organism_name", "Unknown Sample").strip()
                 else:
                     organism_name = "Undefined"
-                # -------------------------------------------------
 
                 collection_id = request.POST.get("collection")
                 collection_obj = Collection.objects.filter(id=collection_id).first() if collection_id else None
@@ -145,7 +146,7 @@ def sample_create_view(request):
 
                             base_data = {
                                 "sample_id": final_id,
-                                "organism_name": organism_name, # Uses the dynamically created name
+                                "organism_name": organism_name, 
                                 "sample_type": sample_type,
                                 "biobank": biobank,
                                 "scientific_notes": scientific_notes,
@@ -156,12 +157,12 @@ def sample_create_view(request):
                                 "storage_location": storage_location,
                             }
 
-                            if sample_type == "Bacteria (Host)":
+                            if sample_type == "Bacterium (Host)":
                                 r_markers = request.POST.get("resistance_markers", "")
                                 r_list = [r.strip() for r in r_markers.split(",") if r.strip()]
                                 sample = Bacteria.objects.create(
                                     **base_data,
-                                    genus=request.POST.get("genus", ""), # Added Genus
+                                    genus=request.POST.get("genus", ""),
                                     species=request.POST.get("species", ""),
                                     strain=request.POST.get("strain", ""),
                                     genotype=request.POST.get("genotype", ""),
@@ -171,7 +172,7 @@ def sample_create_view(request):
                             elif sample_type == "Phage (Virus)":
                                 sample = Phage.objects.create(
                                     **base_data,
-                                    genus=request.POST.get("genus", ""), # Added Genus
+                                    genus=request.POST.get("genus", ""), 
                                     morphotype=request.POST.get("morphotype"),
                                     taxonomy=request.POST.get("taxonomy"),
                                     lifestyle=request.POST.get("lifestyle"),
@@ -182,10 +183,10 @@ def sample_create_view(request):
                                     temp_C=request.POST.get("temp_C") or None
                                 )
 
-                            elif sample_type == "Vector (Backbone)":
+                            elif sample_type == "Vector Backbone":
                                 r_markers = request.POST.get("resistance_markers", "")
                                 r_list = [r.strip() for r in r_markers.split(",") if r.strip()]
-                                sample = Vector.objects.create(
+                                sample = VectorBackbone.objects.create(
                                     **base_data,
                                     name_official=request.POST.get("name_official", ""),
                                     vector_type=request.POST.get("vector_type"),
@@ -194,21 +195,36 @@ def sample_create_view(request):
                                     resistance_markers=r_list
                                 )
 
-                            elif sample_type == "Construction (Plasmid)":
-                                p_vector_id = request.POST.get("parent_vector_id")
-                                p_vector = Vector.objects.filter(id=p_vector_id).first() if p_vector_id else None
-                                sample = Construction.objects.create(
+                            elif sample_type == "Insert":
+                                sample = Insert.objects.create(
                                     **base_data,
-                                    parent_vector=p_vector,
-                                    construction_name=request.POST.get("construction_name", ""),
                                     insert_name=request.POST.get("insert_name", ""),
-                                    insert_size_bp=request.POST.get("insert_size_bp") or 0
+                                    insert_size_bp=request.POST.get("insert_size_bp") or 0,
+                                    sequence=request.POST.get("sequence", "")
+                                )
+
+                            elif sample_type == "Plasmid (Backbone + Insert)":
+                                backbone_id = request.POST.get("backbone")
+                                # ATUALIZADO AQUI
+                                insert_id = request.POST.get("insert_part") 
+
+                                backbone_obj = VectorBackbone.objects.filter(id=backbone_id).first() if backbone_id else None
+                                insert_obj = Insert.objects.filter(id=insert_id).first() if insert_id else None
+
+                                if not backbone_obj:
+                                    raise ValueError("A Vector Backbone is required to assemble a Plasmid.")
+
+                                sample = Plasmid.objects.create(
+                                    **base_data,
+                                    backbone=backbone_obj,
+                                    insert_part=insert_obj, # E AQUI
+                                    construction_name=request.POST.get("construction_name", ""),
+                                    origin_lab=request.POST.get("origin_lab", "")
                                 )
 
                             else:
                                 sample = Sample.objects.create(**base_data)
                             
-                            # M2M relationship addition
                             if collection_obj:
                                 sample.collections.add(collection_obj)
 
@@ -245,9 +261,6 @@ def sample_create_view(request):
 
                             created_samples.append(sample)
 
-                    # =========================================================
-                    # FILES UPLOAD
-                    # =========================================================
                     files = request.FILES.getlist("file")
                     categories = request.POST.getlist("file_category")
                     descriptions = request.POST.getlist("file_description")
@@ -259,7 +272,6 @@ def sample_create_view(request):
                             desc = descriptions[k] if k < len(descriptions) else ""
                             SampleFile.objects.create(sample=sample, file=f, category=cat, description=desc)
                             
-                        # STORAGE LEVELS
                         if storage_location:
                             limpo = storage_location.replace('>', '|').replace(',', '|').replace(';', '|')
                             fatias = [f.strip() for f in limpo.split('|') if f.strip()]
@@ -327,7 +339,7 @@ def export_samples_csv(request):
         'Collections', 'Biobank', 'Storage Location', 'Owner', 'Created At',
         'Phage: Genus', 'Phage: Morphotype', 'Phage: Taxonomy', 'Phage: Lifestyle', 'Genome (Type)', 'Genome Size (bp)',
         'Bacteria: Genus', 'Bacteria: Species', 'Bacteria: Strain', 'Genotype', 'Resistance Markers',
-        'Construction: Parent Vector', 'Construction: Insert', 'Insert Size (bp)'
+        'Plasmid: Backbone', 'Plasmid: Insert', 'Plasmid Size (bp)', 'Sequence Data'
     ]
     writer.writerow(headers)
     
@@ -347,7 +359,7 @@ def export_samples_csv(request):
         
         p_genus = morphotype = taxonomy = lifestyle = genome_type = genome_size = ""
         b_genus = species = strain = genotype = resistance = ""
-        parent_vector = insert_name = insert_size = ""
+        plasmid_backbone = plasmid_insert = plasmid_size = sequence_data = ""
 
         if hasattr(s, 'phage'):
             p_genus = s.phage.genus or ""
@@ -364,18 +376,24 @@ def export_samples_csv(request):
             genotype = s.bacteria.genotype or ""
             resistance = ", ".join(s.bacteria.resistance_markers) if isinstance(s.bacteria.resistance_markers, list) else s.bacteria.resistance_markers
             
-        elif hasattr(s, 'vector'):
-            resistance = ", ".join(s.vector.resistance_markers) if isinstance(s.vector.resistance_markers, list) else s.vector.resistance_markers
+        elif hasattr(s, 'vectorbackbone'):
+            resistance = ", ".join(s.vectorbackbone.resistance_markers) if isinstance(s.vectorbackbone.resistance_markers, list) else s.vectorbackbone.resistance_markers
             
-        elif hasattr(s, 'construction'):
-            parent_vector = s.construction.parent_vector.sample_id if s.construction.parent_vector else ""
-            insert_name = s.construction.insert_name or ""
-            insert_size = s.construction.insert_size_bp or ""
+        elif hasattr(s, 'insert'):
+            plasmid_insert = s.insert.insert_name or ""
+            plasmid_size = s.insert.insert_size_bp or ""
+            sequence_data = s.insert.sequence or ""
+
+        elif hasattr(s, 'plasmid'):
+            plasmid_backbone = s.plasmid.backbone.name_official if s.plasmid.backbone else ""
+            # ATUALIZADO AQUI
+            plasmid_insert = s.plasmid.insert_part.insert_name if s.plasmid.insert_part else "N/A (Empty Vector)"
+            plasmid_size = s.plasmid.final_size_bp or ""
 
         row.extend([
             p_genus, morphotype, taxonomy, lifestyle, genome_type, genome_size,
             b_genus, species, strain, genotype, resistance,
-            parent_vector, insert_name, insert_size
+            plasmid_backbone, plasmid_insert, plasmid_size, sequence_data
         ])
         
         writer.writerow(row)
@@ -391,8 +409,9 @@ def sample_edit_view(request, sample_id):
     
     if hasattr(base_sample, 'bacteria'): real_sample = base_sample.bacteria
     elif hasattr(base_sample, 'phage'): real_sample = base_sample.phage
-    elif hasattr(base_sample, 'vector'): real_sample = base_sample.vector
-    elif hasattr(base_sample, 'construction'): real_sample = base_sample.construction
+    elif hasattr(base_sample, 'vectorbackbone'): real_sample = base_sample.vectorbackbone
+    elif hasattr(base_sample, 'insert'): real_sample = base_sample.insert
+    elif hasattr(base_sample, 'plasmid'): real_sample = base_sample.plasmid
     else: real_sample = base_sample
 
     if not can_edit_sample(request.user, real_sample) and not request.user.is_superuser:
@@ -468,7 +487,6 @@ def sample_relate_view(request, sample_id):
         raise PermissionDenied
 
     if request.method == "POST":
-        # Supports the Grid/Table layout we created earlier
         target_ids_str = request.POST.get("target_ids", "")
         target_ids = [tid for tid in target_ids_str.split(",") if tid]
         general_notes = request.POST.get("notes", "")
@@ -483,7 +501,6 @@ def sample_relate_view(request, sample_id):
                     target_sample = Sample.objects.get(id=t_id)
                     if current_sample == target_sample: continue
                     
-                    # Capture specific row data (Fallback to global if using simple modal)
                     direction = request.POST.get(f"direction_{t_id}") or request.POST.get("direction", "out")
                     rel_type = request.POST.get(f"type_{t_id}") or request.POST.get("relationship_type")
                     eop = request.POST.get(f"eop_{t_id}") or request.POST.get("eop")
@@ -493,7 +510,6 @@ def sample_relate_view(request, sample_id):
                     else:
                         source, destination = current_sample, target_sample
 
-                    # 1. Create visual graph relationship
                     SampleRelationship.objects.create(
                         source_sample=source,
                         target_sample=destination,
@@ -502,7 +518,6 @@ def sample_relate_view(request, sample_id):
                         created_by=request.user
                     )
                     
-                    # Log event
                     Event.objects.create(
                         sample=current_sample,
                         performed_by=request.user,
@@ -510,7 +525,6 @@ def sample_relate_view(request, sample_id):
                         notes=f"Relationship added: {rel_type} with {target_sample.sample_id}"
                     )
 
-                    # 2. Host-Range scientific logic
                     if rel_type == "infects":
                         phage_obj = None
                         bacteria_obj = None

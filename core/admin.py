@@ -14,33 +14,23 @@ from core.models import (
     Tag,
     Keyword,
     KeywordValue,
-    # Modelos biológicos atualizados
     Bacteria,
     Phage,
     HostRange,
-    Vector,
-    Construction
+    VectorBackbone,
+    Insert,
+    Plasmid
 )
 
-# ============================================================
-# RESOURCES (PARA IMPORTAÇÃO/EXPORTAÇÃO)
-# ============================================================
 class SampleResource(resources.ModelResource):
     class Meta:
         model = Sample
         fields = ('id', 'sample_id', 'sample_type', 'organism_name', 'status', 'owner__username', 'created_at')
 
-# ============================================================
-# INLINES
-# ============================================================
 class SampleFileInline(admin.TabularInline):
     model = SampleFile
     extra = 0
     readonly_fields = ("uploaded_at", "mime_type", "file_size")
-
-# ============================================================
-# ADMIN CLASSES
-# ============================================================
 
 @admin.register(Tag)
 class TagAdmin(admin.ModelAdmin):
@@ -66,8 +56,6 @@ class SampleAdmin(ImportExportModelAdmin):
     inlines = [SampleFileInline]
     filter_horizontal = ("collections", "tags", "keywords")
 
-# --- ADMINISTRAÇÃO DOS SUBTIPOS BIOLÓGICOS ---
-
 @admin.register(Bacteria)
 class BacteriaAdmin(admin.ModelAdmin):
     list_display = ("sample_id", "species", "strain", "owner")
@@ -85,18 +73,24 @@ class HostRangeAdmin(admin.ModelAdmin):
     list_display = ("phage", "bacteria", "is_isolation_host", "efficiency_eop")
     list_filter = ("is_isolation_host",)
 
-@admin.register(Vector)
-class VectorAdmin(admin.ModelAdmin):
+@admin.register(VectorBackbone)
+class VectorBackboneAdmin(admin.ModelAdmin):
     list_display = ("sample_id", "name_official", "vector_type", "vector_size_bp")
     search_fields = ("sample_id", "name_official")
     filter_horizontal = ("collections", "tags", "keywords")
 
-@admin.register(Construction)
-class ConstructionAdmin(admin.ModelAdmin):
-    # host_strain removido para evitar erro de campo inexistente
-    list_display = ("sample_id", "construction_name", "parent_vector", "final_size_bp", "owner")
-    search_fields = ("sample_id", "construction_name", "insert_name")
-    readonly_fields = ("final_size_bp",) # Campo calculado no save() do model
+@admin.register(Insert)
+class InsertAdmin(admin.ModelAdmin):
+    list_display = ("sample_id", "insert_name", "insert_size_bp", "owner")
+    search_fields = ("sample_id", "insert_name")
+    filter_horizontal = ("collections", "tags", "keywords")
+
+@admin.register(Plasmid)
+class PlasmidAdmin(admin.ModelAdmin):
+    # ATUALIZADO AQUI
+    list_display = ("sample_id", "construction_name", "backbone", "insert_part", "final_size_bp", "owner")
+    search_fields = ("sample_id", "construction_name", "backbone__name_official", "insert_part__insert_name")
+    readonly_fields = ("final_size_bp",) 
     filter_horizontal = ("collections", "tags", "keywords")
 
 @admin.register(SampleFile)

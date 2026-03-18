@@ -11,4 +11,4 @@ from .tags.model import Tag
 from .keywords.model import Keyword, KeywordValue
 from .events.model import Event
 from .research_groups.model import ResearchGroup
-from .samples.subtypes import Bacteria, Phage, HostRange, Vector, Construction
+from .samples.subtypes import Bacteria, Phage, HostRange, VectorBackbone, Insert, Plasmid

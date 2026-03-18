@@ -1,6 +1,6 @@
 from .sample import Sample
 from .sample_files import SampleFile
-from .subtypes import Bacteria, Phage, HostRange, Vector, Construction
+from .subtypes import Bacteria, Phage, HostRange, VectorBackbone, Insert, Plasmid
 from .relationship import SampleRelationship
 
 __all__ = [
@@ -9,6 +9,7 @@ __all__ = [
     'Bacteria',
     'Phage',
     'HostRange',
-    'Vector',
-    'Construction'
+    'VectorBackbone',
+    'Insert',
+    'Plasmid'
 ]
